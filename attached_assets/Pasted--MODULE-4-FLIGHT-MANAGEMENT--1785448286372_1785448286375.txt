@@ -1,0 +1,286 @@
+======================================================
+MODULE 4
+FLIGHT MANAGEMENT
+======================================================
+
+Create flights
+
+Flight Number
+
+Aircraft
+
+Captain
+
+Crew
+
+Departure
+
+Arrival
+
+Passengers
+
+Status
+
+Delay
+
+Cancellation
+
+Gate
+
+Terminal
+
+======================================================
+MODULE 5
+EMPLOYEE MANAGEMENT
+======================================================
+
+Add
+
+Edit
+
+Delete
+
+Suspend
+
+Promote
+
+Transfer
+
+Search
+
+Filter
+
+Employee Profiles
+
+======================================================
+MODULE 6
+ANALYTICS
+======================================================
+
+Build analytics dashboards.
+
+Include
+
+Delay Trends
+
+Most Delayed Routes
+
+Aircraft Utilization
+
+Crew Utilization
+
+Monthly Flights
+
+Fuel Consumption
+
+Maintenance Costs
+
+Revenue
+
+======================================================
+NOTIFICATIONS
+======================================================
+
+Real-time notifications using Supabase.
+
+Examples
+
+Flight delayed
+
+Aircraft maintenance due
+
+Crew assignment changed
+
+Employee registered
+
+Password changed
+
+======================================================
+SETTINGS
+======================================================
+
+Profile Settings
+
+Change Password
+
+Dark Mode
+
+Light Mode
+
+Notification Settings
+
+Language
+
+======================================================
+DATABASE DESIGN
+======================================================
+
+Create PostgreSQL tables with relationships.
+
+Include
+
+profiles
+
+employees
+
+roles
+
+departments
+
+aircraft
+
+crew
+
+crew_assignments
+
+routes
+
+flights
+
+maintenance
+
+notifications
+
+attendance
+
+leave_requests
+
+analytics
+
+activity_logs
+
+Create foreign keys.
+
+Create indexes.
+
+Normalize the database.
+
+======================================================
+SUPABASE
+======================================================
+
+Use Supabase Authentication.
+
+Use PostgreSQL.
+
+Create Row Level Security policies.
+
+Generate SQL migration scripts.
+
+Generate Supabase schema.
+
+Create seed data.
+
+======================================================
+UI DESIGN
+======================================================
+
+Modern Airline Dashboard
+
+Professional
+
+Blue and White theme
+
+Rounded Cards
+
+Responsive
+
+Sidebar Navigation
+
+Top Navigation
+
+Animations
+
+Professional icons
+
+Loading Skeletons
+
+Toast Notifications
+
+Empty States
+
+Error Pages
+
+404 Page
+
+======================================================
+SECURITY
+======================================================
+
+Encrypt passwords using Supabase Auth.
+
+Protect routes.
+
+Role Based Access Control.
+
+Session persistence.
+
+Input validation.
+
+Rate limiting.
+
+======================================================
+PROJECT STRUCTURE
+======================================================
+
+Generate a professional folder structure.
+
+Separate
+
+Components
+
+Pages
+
+Hooks
+
+Contexts
+
+Layouts
+
+Services
+
+Utils
+
+Supabase
+
+Types
+
+Assets
+
+======================================================
+DELIVERABLES
+======================================================
+
+I want Replit AI to generate:
+
+1. Complete React frontend
+
+2. Complete Supabase backend
+
+3. PostgreSQL schema
+
+4. SQL migration scripts
+
+5. Authentication
+
+6. Role Based Access
+
+7. Dashboard
+
+8. Fully functional CRUD operations
+
+9. Responsive UI
+
+10. Charts
+
+11. Sample data
+
+12. README explaining setup
+
+13. Environment variables (.env.example)
+
+14. Deployment instructions
+
+15. Clean, well-commented code.
+
+Build the application module by module and ensure everything works together without errors.
