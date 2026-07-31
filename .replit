@@ -18,3 +18,11 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+VITE_ADMIN_EMAIL = "evansmenyah@gmail.com"
+VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2YXhmZWlybHV4bWdoaW9zZmR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0NDEwNTAsImV4cCI6MjEwMTAxNzA1MH0.uFjHdhhEfhn9QH8E_lBgCdSEdB85_e4kcT2wOSd6FKU"
+VITE_SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2YXhmZWlybHV4bWdoaW9zZmR6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTQ0MTA1MCwiZXhwIjoyMTAxMDE3MDUwfQ.mxGN8zpgyxTN7Hc6pdhrFYJQh1aGDYnFpC85xT3rZFY"
+VITE_SUPABASE_URL = "https://tvaxfeirluxmghiosfdz.supabase.co"

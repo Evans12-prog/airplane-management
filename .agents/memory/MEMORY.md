@@ -1,0 +1,1 @@
+- [Airline Management Supabase Setup](airline-supabase.md) — Uses Supabase directly (no Express API), SQL migrations in artifacts/airline-management/supabase/migrations/, admin role must be set manually via SQL after first sign-up.
