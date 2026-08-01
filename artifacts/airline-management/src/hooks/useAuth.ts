@@ -123,19 +123,34 @@ export function useAuth() {
       };
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setState((prev) => ({
-        ...prev,
-        session,
-        user: session?.user ?? null,
-        loading: Boolean(session?.user),
-      }));
-      if (session?.user) {
-        loadProfile(session.user.id, session.user.email || '');
-      } else {
-        setState((prev) => ({ ...prev, loading: false }));
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setState((prev) => ({
+          ...prev,
+          session,
+          user: session?.user ?? null,
+          loading: Boolean(session?.user),
+        }));
+        if (session?.user) {
+          await loadProfile(session.user.id, session.user.email || '');
+        } else {
+          setState((prev) => ({ ...prev, loading: false }));
+        }
+      } catch {
+        setState((prev) => ({
+          ...prev,
+          session: null,
+          user: null,
+          profile: null,
+          isAdmin: false,
+          isManager: false,
+          loading: false,
+        }));
       }
-    });
+    };
+
+    void initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
