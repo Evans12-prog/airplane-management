@@ -1,4 +1,4 @@
-import { Bell, Moon, Sun, Search } from 'lucide-react';
+import { Bell, Moon, Sun, Search, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTheme } from 'next-themes';
@@ -8,36 +8,42 @@ import { useLocation } from 'wouter';
 
 interface HeaderProps {
   title: string;
-  sidebarCollapsed: boolean;
+  onMenuToggle: () => void;
+  mobileMenuOpen: boolean;
 }
 
-export function Header({ title, sidebarCollapsed }: HeaderProps) {
+export function Header({ title, onMenuToggle, mobileMenuOpen }: HeaderProps) {
   const { theme, setTheme } = useTheme();
   const { user } = useAuthContext();
   const { unreadCount } = useNotifications(user?.id);
   const [, setLocation] = useLocation();
 
   return (
-    <header
-      className="h-16 bg-card border-b border-card-border flex items-center justify-between px-6 sticky top-0 z-40"
-    >
-      <div className="flex items-center gap-4 flex-1">
-        <h1 className="text-xl font-bold text-foreground">{title}</h1>
+    <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-card-border bg-card px-4 sm:px-6">
+      <div className="flex flex-1 items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={onMenuToggle}
+          aria-label="Toggle navigation menu"
+        >
+          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </Button>
+        <h1 className="text-lg font-bold text-foreground sm:text-xl">{title}</h1>
       </div>
 
       <div className="flex items-center gap-3">
-        {/* Search */}
         <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Search flights, employees..."
-            className="pl-9 w-64 bg-background"
+            className="w-64 bg-background pl-9"
             data-testid="input-search-global"
           />
         </div>
 
-        {/* Notifications */}
         <Button
           variant="ghost"
           size="icon"
@@ -47,13 +53,12 @@ export function Header({ title, sidebarCollapsed }: HeaderProps) {
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+            <span className="absolute -right-1 -top-1 min-w-[20px] rounded-full bg-destructive px-1.5 py-0.5 text-center text-xs font-bold text-destructive-foreground">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
         </Button>
 
-        {/* Dark Mode Toggle */}
         <Button
           variant="ghost"
           size="icon"

@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { updatePassword } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import type { Database } from '@/types/supabase';
 import { toast } from 'sonner';
 
 const profileSchema = z.object({
@@ -58,8 +59,7 @@ export default function SettingsPage() {
     if (!user) return;
     setIsUpdatingProfile(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
+      const { error } = await (supabase.from('profiles') as any)
         .update({
           full_name: values.full_name,
           phone: values.phone || null,
@@ -93,7 +93,9 @@ export default function SettingsPage() {
     if (!user) return;
     setDarkMode(enabled);
     try {
-      const { error } = await supabase.from('profiles').update({ dark_mode: enabled }).eq('id', user.id);
+      const { error } = await (supabase.from('profiles') as any)
+        .update({ dark_mode: enabled })
+        .eq('id', user.id);
       if (error) throw error;
       toast.success(`Dark mode ${enabled ? 'enabled' : 'disabled'}`);
     } catch (error) {

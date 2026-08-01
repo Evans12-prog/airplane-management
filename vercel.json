@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm --dir artifacts/airline-management build",
+  "outputDirectory": "artifacts/airline-management/dist/public",
+  "installCommand": "pnpm install --ignore-scripts",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

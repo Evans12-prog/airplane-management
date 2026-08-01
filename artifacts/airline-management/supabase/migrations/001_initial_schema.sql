@@ -251,6 +251,18 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 );
 
 -- ============================================================
+-- ANALYTICS TABLE
+-- ============================================================
+CREATE TABLE IF NOT EXISTS analytics (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  metric_name TEXT NOT NULL,
+  metric_value NUMERIC NOT NULL,
+  metadata JSONB DEFAULT '{}',
+  recorded_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
 -- INDEXES
 -- ============================================================
 CREATE INDEX IF NOT EXISTS idx_flights_status ON flights(status);

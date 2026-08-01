@@ -1,0 +1,68 @@
+﻿src/hooks/useAnalytics.ts(82,18): error TS2339: Property 'departure_time' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(86,18): error TS2339: Property 'status' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(86,44): error TS2339: Property 'status' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(88,54): error TS2339: Property 'status' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(90,18): error TS2339: Property 'status' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(96,58): error TS2339: Property 'status' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(97,54): error TS2339: Property 'status' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(98,52): error TS2339: Property 'crew_type' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(98,79): error TS2339: Property 'is_available' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(99,55): error TS2339: Property 'crew_type' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(99,93): error TS2339: Property 'is_available' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(101,60): error TS2339: Property 'passenger_count' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(107,62): error TS2339: Property 'status' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(110,53): error TS2339: Property 'status' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(112,54): error TS2339: Property 'status' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(122,34): error TS2339: Property 'passenger_count' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(169,36): error TS2339: Property 'departure_time' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(171,17): error TS2339: Property 'status' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(172,22): error TS2339: Property 'status' does not exist on type 'never'.
+src/hooks/useAnalytics.ts(173,22): error TS2339: Property 'status' does not exist on type 'never'.
+src/hooks/useAuth.ts(41,34): error TS2339: Property 'roles' does not exist on type 'never'.
+src/hooks/useEmployees.ts(137,69): error TS2345: Argument of type 'Omit<{ id: string; employee_number: string; profile_id: string | null; full_name: string; email: string; phone: string | null; department_id: string | null; role_id: string | null; job_title: string; ... 9 more ...; updated_at: string; }, "created_at" | "updated_at">' is not assignable to parameter of type 'never[]'.
+  Type 'Omit<{ id: string; employee_number: string; profile_id: string | null; full_name: string; email: string; phone: string | null; department_id: string | null; role_id: string | null; job_title: string; ... 9 more ...; updated_at: string; }, "created_at" | "updated_at">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/hooks/useEmployees.ts(144,69): error TS2345: Argument of type 'Partial<Omit<{ id: string; employee_number: string; profile_id: string | null; full_name: string; email: string; phone: string | null; department_id: string | null; role_id: string | null; job_title: string; ... 9 more ...; updated_at: string; }, "created_at" | "updated_at">>' is not assignable to parameter of type 'never'.
+src/hooks/useFlights.ts(161,67): error TS2345: Argument of type 'Omit<{ id: string; flight_number: string; aircraft_id: string | null; route_id: string | null; captain_id: string | null; departure_time: string; arrival_time: string; actual_departure: string | null; ... 12 more ...; updated_at: string; }, "created_at" | "updated_at">' is not assignable to parameter of type 'never[]'.
+  Type 'Omit<{ id: string; flight_number: string; aircraft_id: string | null; route_id: string | null; captain_id: string | null; departure_time: string; arrival_time: string; actual_departure: string | null; ... 12 more ...; updated_at: string; }, "created_at" | "updated_at">' is missing the following properties from type 'never[]': length, pop, push, concat, and 35 more.
+src/hooks/useFlights.ts(168,67): error TS2345: Argument of type 'Partial<Omit<{ id: string; flight_number: string; aircraft_id: string | null; route_id: string | null; captain_id: string | null; departure_time: string; arrival_time: string; actual_departure: string | null; ... 12 more ...; updated_at: string; }, "created_at" | "updated_at">>' is not assignable to parameter of type 'never'.
+src/lib/auth.ts(548,7): error TS2353: Object literal may only specify known properties, and 'id' does not exist in type 'never[]'.
+src/lib/auth.ts(553,28): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/auth.ts(554,22): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/auth.ts(559,7): error TS2353: Object literal may only specify known properties, and 'id' does not exist in type 'never[]'.
+src/lib/auth.ts(565,28): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/auth.ts(566,22): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/auth.ts(630,5): error TS2353: Object literal may only specify known properties, and 'id' does not exist in type 'never[]'.
+src/lib/auth.ts(633,20): error TS2339: Property 'id' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(106,39): error TS2339: Property 'employee_number' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(107,33): error TS2339: Property 'full_name' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(108,29): error TS2339: Property 'email' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(109,29): error TS2339: Property 'phone' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(110,37): error TS2339: Property 'department_id' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(111,31): error TS2339: Property 'role_id' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(112,33): error TS2339: Property 'job_title' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(113,39): error TS2339: Property 'employment_type' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(114,30): error TS2339: Property 'status' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(115,33): error TS2339: Property 'hire_date' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(116,30): error TS2339: Property 'salary' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(117,31): error TS2339: Property 'address' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(118,48): error TS2339: Property 'emergency_contact' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(118,90): error TS2339: Property 'emergency_contact' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(118,134): error TS2339: Property 'emergency_contact' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(119,29): error TS2339: Property 'notes' does not exist on type 'never'.
+src/pages/employees/EmployeeFormPage.tsx(137,13): error TS2739: Type '{ employee_number: string; full_name: string; email: string; phone: string | null; department_id: string | null; role_id: string | null; job_title: string; employment_type: "full_time" | "part_time" | "contract" | "intern"; ... 6 more ...; notes: string | null; }' is missing the following properties from type 'Omit<{ id: string; employee_number: string; profile_id: string | null; full_name: string; email: string; phone: string | null; department_id: string | null; role_id: string | null; job_title: string; ... 9 more ...; updated_at: string; }, "created_at" | "updated_at">': id, profile_id
+src/pages/flights/NewFlightPage.tsx(89,43): error TS2339: Property 'flight_number' does not exist on type 'never'.
+src/pages/flights/NewFlightPage.tsx(90,41): error TS2339: Property 'aircraft_id' does not exist on type 'never'.
+src/pages/flights/NewFlightPage.tsx(91,38): error TS2339: Property 'route_id' does not exist on type 'never'.
+src/pages/flights/NewFlightPage.tsx(92,40): error TS2339: Property 'captain_id' does not exist on type 'never'.
+src/pages/flights/NewFlightPage.tsx(93,44): error TS2339: Property 'departure_time' does not exist on type 'never'.
+src/pages/flights/NewFlightPage.tsx(94,42): error TS2339: Property 'arrival_time' does not exist on type 'never'.
+src/pages/flights/NewFlightPage.tsx(95,34): error TS2339: Property 'gate' does not exist on type 'never'.
+src/pages/flights/NewFlightPage.tsx(96,38): error TS2339: Property 'terminal' does not exist on type 'never'.
+src/pages/flights/NewFlightPage.tsx(97,45): error TS2339: Property 'passenger_count' does not exist on type 'never'.
+src/pages/flights/NewFlightPage.tsx(98,36): error TS2339: Property 'status' does not exist on type 'never'.
+src/pages/flights/NewFlightPage.tsx(99,35): error TS2339: Property 'notes' does not exist on type 'never'.
+src/pages/flights/NewFlightPage.tsx(129,28): error TS2345: Argument of type '{ flight_number: string; aircraft_id: string; route_id: string; captain_id: string | null; departure_time: string; arrival_time: string; gate: string | null; terminal: string | null; passenger_count: number; ... 8 more ...; available_seats: null; }' is not assignable to parameter of type 'Omit<{ id: string; flight_number: string; aircraft_id: string | null; route_id: string | null; captain_id: string | null; departure_time: string; arrival_time: string; actual_departure: string | null; ... 12 more ...; updated_at: string; }, "created_at" | "updated_at">'.
+  Property 'id' is missing in type '{ flight_number: string; aircraft_id: string; route_id: string; captain_id: string | null; departure_time: string; arrival_time: string; gate: string | null; terminal: string | null; passenger_count: number; ... 8 more ...; available_seats: null; }' but required in type 'Omit<{ id: string; flight_number: string; aircraft_id: string | null; route_id: string | null; captain_id: string | null; departure_time: string; arrival_time: string; actual_departure: string | null; ... 12 more ...; updated_at: string; }, "created_at" | "updated_at">'.
+src/pages/settings/SettingsPage.tsx(43,23): error TS2339: Property 'phone' does not exist on type 'Profile'.
+src/pages/settings/SettingsPage.tsx(63,17): error TS2345: Argument of type '{ full_name: string; phone: string | null; avatar_url: string | null; }' is not assignable to parameter of type 'never'.
+src/pages/settings/SettingsPage.tsx(96,64): error TS2345: Argument of type '{ dark_mode: boolean; }' is not assignable to parameter of type 'never'.

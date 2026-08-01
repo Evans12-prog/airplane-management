@@ -1,8 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useLocation } from 'wouter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDashboardStats, useDelayTrends } from '@/hooks/useAnalytics';
 import { useFlights } from '@/hooks/useFlights';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { canAccessAnalytics, canAccessEmployees } from '@/lib/auth';
+import { Button } from '@/components/ui/button';
 import { TrendingUp, DollarSign, Percent, Clock } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
@@ -53,11 +57,28 @@ export default function AnalyticsPage() {
     return flights.reduce((sum, f) => sum + (f.passenger_count || 0) * 1800, 0);
   }, [flights]);
 
+  const { profile } = useAuthContext();
+  const [, setLocation] = useLocation();
+  const canManageEmployees = canAccessEmployees(profile);
+
+  useEffect(() => {
+    if (!canAccessAnalytics(profile)) {
+      setLocation('/');
+    }
+  }, [profile, setLocation]);
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground">Analytics & Insights</h2>
-        <p className="text-sm text-muted-foreground">Comprehensive operational metrics and performance data</p>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Analytics & Insights</h2>
+          <p className="text-sm text-muted-foreground">Comprehensive operational metrics and performance data</p>
+        </div>
+        {canManageEmployees && (
+          <Button variant="secondary" onClick={() => setLocation('/employees/new')}>
+            Add Employee
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">

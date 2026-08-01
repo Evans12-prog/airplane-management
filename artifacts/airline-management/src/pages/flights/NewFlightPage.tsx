@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useRoute } from 'wouter';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -34,7 +34,10 @@ const flightSchema = z.object({
 
 export default function NewFlightPage() {
   const [, setLocation] = useLocation();
-  const { createFlight } = useFlights();
+  const [match, params] = useRoute('/flights/edit/:id');
+  const flightId = params?.id;
+  const isEditing = Boolean(match && flightId);
+  const { createFlight, updateFlight } = useFlights();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [aircraft, setAircraft] = useState<Aircraft[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
@@ -73,39 +76,80 @@ export default function NewFlightPage() {
       setAircraft(aircraftRes.data || []);
       setRoutes(routesRes.data || []);
       setCaptains(captainsRes.data || []);
+
+      if (isEditing && flightId) {
+        const { data: existingFlight } = await (supabase.from('flights') as any)
+          .select('*')
+          .eq('id', flightId)
+          .single();
+
+        if (existingFlight) {
+          form.reset({
+            flight_number: existingFlight.flight_number,
+            aircraft_id: existingFlight.aircraft_id || '',
+            route_id: existingFlight.route_id || '',
+            captain_id: existingFlight.captain_id || undefined,
+            departure_time: existingFlight.departure_time?.slice(0, 16) || '',
+            arrival_time: existingFlight.arrival_time?.slice(0, 16) || '',
+            gate: existingFlight.gate || '',
+            terminal: existingFlight.terminal || '',
+            passenger_count: existingFlight.passenger_count ?? 0,
+            status: existingFlight.status,
+            notes: existingFlight.notes || '',
+          });
+        }
+      }
+
       setLoading(false);
     };
 
     fetchData();
-  }, []);
+  }, [flightId, isEditing, form]);
 
   const onSubmit = async (values: z.infer<typeof flightSchema>) => {
     setIsSubmitting(true);
     try {
-      await createFlight({
-        flight_number: values.flight_number,
-        aircraft_id: values.aircraft_id,
-        route_id: values.route_id,
-        captain_id: values.captain_id || null,
-        departure_time: values.departure_time,
-        arrival_time: values.arrival_time,
-        gate: values.gate || null,
-        terminal: values.terminal || null,
-        passenger_count: values.passenger_count,
-        status: values.status,
-        notes: values.notes || null,
-        delay_minutes: 0,
-        actual_departure: null,
-        actual_arrival: null,
-        delay_reason: null,
-        cancellation_reason: null,
-        fuel_used_liters: null,
-        available_seats: null,
-      });
-      toast.success('Flight created successfully');
+      if (isEditing && flightId) {
+        await updateFlight(flightId, {
+          flight_number: values.flight_number,
+          aircraft_id: values.aircraft_id,
+          route_id: values.route_id,
+          captain_id: values.captain_id || null,
+          departure_time: values.departure_time,
+          arrival_time: values.arrival_time,
+          gate: values.gate || null,
+          terminal: values.terminal || null,
+          passenger_count: values.passenger_count,
+          status: values.status,
+          notes: values.notes || null,
+        });
+        toast.success('Flight updated successfully');
+      } else {
+        await createFlight({
+          flight_number: values.flight_number,
+          aircraft_id: values.aircraft_id,
+          route_id: values.route_id,
+          captain_id: values.captain_id || null,
+          departure_time: values.departure_time,
+          arrival_time: values.arrival_time,
+          gate: values.gate || null,
+          terminal: values.terminal || null,
+          passenger_count: values.passenger_count,
+          status: values.status,
+          notes: values.notes || null,
+          delay_minutes: 0,
+          actual_departure: null,
+          actual_arrival: null,
+          delay_reason: null,
+          cancellation_reason: null,
+          fuel_used_liters: null,
+          available_seats: null,
+        });
+        toast.success('Flight created successfully');
+      }
       setLocation('/flights');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create flight');
+      toast.error(error instanceof Error ? error.message : 'Failed to save flight');
     } finally {
       setIsSubmitting(false);
     }

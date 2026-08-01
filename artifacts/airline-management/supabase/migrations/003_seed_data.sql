@@ -7,20 +7,36 @@ INSERT INTO roles (id, name, description, permissions) VALUES
   ('00000000-0000-0000-0000-000000000001', 'super_admin', 'Super Administrator with full access', '{"all": true}'),
   ('00000000-0000-0000-0000-000000000002', 'admin', 'Administrator', '{"manage_users": true, "manage_flights": true, "manage_employees": true, "view_analytics": true}'),
   ('00000000-0000-0000-0000-000000000003', 'manager', 'Operations Manager', '{"manage_flights": true, "manage_employees": true, "view_analytics": true}'),
-  ('00000000-0000-0000-0000-000000000004', 'pilot', 'Flight Captain/Pilot', '{"view_flights": true, "view_crew": true}'),
-  ('00000000-0000-0000-0000-000000000005', 'crew', 'Flight Crew Member', '{"view_flights": true}'),
-  ('00000000-0000-0000-0000-000000000006', 'staff', 'General Staff', '{"view_own_data": true}')
+  ('00000000-0000-0000-0000-000000000004', 'airline_manager', 'Airline Manager', '{"manage_flights": true, "manage_employees": true, "view_analytics": true}'),
+  ('00000000-0000-0000-0000-000000000005', 'hr_manager', 'HR Manager', '{"manage_employees": true, "view_analytics": true}'),
+  ('00000000-0000-0000-0000-000000000006', 'operations_manager', 'Operations Manager', '{"manage_flights": true, "view_analytics": true}'),
+  ('00000000-0000-0000-0000-000000000007', 'crew_manager', 'Crew Manager', '{"manage_crew": true, "view_flights": true}'),
+  ('00000000-0000-0000-0000-000000000008', 'fleet_manager', 'Fleet Manager', '{"manage_aircraft": true, "view_maintenance": true}'),
+  ('00000000-0000-0000-0000-000000000009', 'route_planner', 'Route Planner', '{"manage_routes": true, "view_flights": true}'),
+  ('00000000-0000-0000-0000-000000000010', 'maintenance_officer', 'Maintenance Officer', '{"manage_maintenance": true, "view_aircraft": true}'),
+  ('00000000-0000-0000-0000-000000000011', 'finance_officer', 'Finance Officer', '{"view_analytics": true, "manage_finance": true}'),
+  ('00000000-0000-0000-0000-000000000012', 'customer_service_officer', 'Customer Service Officer', '{"view_flights": true, "manage_support": true}'),
+  ('00000000-0000-0000-0000-000000000013', 'security_officer', 'Security Officer', '{"view_logs": true, "manage_security": true}'),
+  ('00000000-0000-0000-0000-000000000014', 'pilot', 'Flight Captain/Pilot', '{"view_flights": true, "view_crew": true}'),
+  ('00000000-0000-0000-0000-000000000015', 'crew', 'Flight Crew Member', '{"view_flights": true}'),
+  ('00000000-0000-0000-0000-000000000016', 'staff', 'General Staff', '{"view_own_data": true}'),
+  ('00000000-0000-0000-0000-000000000017', 'employee', 'Employee', '{"view_own_data": true}')
 ON CONFLICT (name) DO NOTHING;
 
 -- Departments
 INSERT INTO departments (id, name, description) VALUES
-  ('00000000-0000-0000-0001-000000000001', 'Flight Operations', 'Manages all flight operations'),
-  ('00000000-0000-0000-0001-000000000002', 'Cabin Crew', 'Flight attendants and cabin staff'),
-  ('00000000-0000-0000-0001-000000000003', 'Ground Operations', 'Ground handling and logistics'),
-  ('00000000-0000-0000-0001-000000000004', 'Engineering', 'Aircraft maintenance and engineering'),
-  ('00000000-0000-0000-0001-000000000005', 'Human Resources', 'HR and employee management'),
-  ('00000000-0000-0000-0001-000000000006', 'Finance', 'Financial management'),
-  ('00000000-0000-0000-0001-000000000007', 'Customer Service', 'Passenger services')
+  ('00000000-0000-0000-0001-000000000001', 'Administration', 'Executive administration and leadership'),
+  ('00000000-0000-0000-0001-000000000002', 'Flight Operations', 'Manages all flight operations'),
+  ('00000000-0000-0000-0001-000000000003', 'Crew Management', 'Flight attendants and cabin staff'),
+  ('00000000-0000-0000-0001-000000000004', 'Fleet Management', 'Aircraft fleet oversight and planning'),
+  ('00000000-0000-0000-0001-000000000005', 'Route Planning', 'Flight route design and planning'),
+  ('00000000-0000-0000-0001-000000000006', 'Maintenance', 'Aircraft maintenance and engineering'),
+  ('00000000-0000-0000-0001-000000000007', 'Human Resource', 'HR and employee management'),
+  ('00000000-0000-0000-0001-000000000008', 'Finance', 'Financial management'),
+  ('00000000-0000-0000-0001-000000000009', 'Customer Service', 'Passenger services'),
+  ('00000000-0000-0000-0001-000000000010', 'Security', 'Security and monitoring'),
+  ('00000000-0000-0000-0001-000000000011', 'Cargo', 'Cargo and logistics operations'),
+  ('00000000-0000-0000-0001-000000000012', 'IT', 'Information technology and systems support')
 ON CONFLICT (name) DO NOTHING;
 
 -- Aircraft

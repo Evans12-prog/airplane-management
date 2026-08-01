@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
 type Notification = Database['public']['Tables']['notifications']['Row'];
@@ -15,79 +15,81 @@ export function useNotifications(userId: string | null | undefined) {
       return;
     }
 
-    // Fetch initial notifications
-    supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(50)
-      .then(({ data }) => {
-        if (data) {
-          setNotifications(data);
-          setUnreadCount(data.filter((n) => !n.is_read).length);
-        }
-        setLoading(false);
-      });
+    let channel: any;
 
-    // Subscribe to real-time notifications
-    const channel = supabase
-      .channel(`notifications:${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          const newNotification = payload.new as Notification;
-          setNotifications((prev) => [newNotification, ...prev]);
-          setUnreadCount((prev) => prev + 1);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          const updated = payload.new as Notification;
-          setNotifications((prev) =>
-            prev.map((n) => (n.id === updated.id ? updated : n))
-          );
-          if (updated.is_read) {
-            setUnreadCount((prev) => Math.max(0, prev - 1));
-          }
-        }
-      )
-      .subscribe();
+    const loadNotifications = async () => {
+      if (!isSupabaseConfigured) {
+        const fallbackNotifications: Notification[] = [
+          {
+            id: 'local-notification-1',
+            user_id: userId,
+            type: 'system',
+            title: 'Welcome to SkyAir',
+            message: 'Your administrator workspace is ready.',
+            data: {},
+            is_read: false,
+            created_at: new Date().toISOString(),
+          } as Notification,
+        ];
+        setNotifications(fallbackNotifications);
+        setUnreadCount(1);
+        setLoading(false);
+        return;
+      }
+
+      const notificationsClient = (supabase as any).from('notifications');
+      const { data, error } = await notificationsClient
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setNotifications(data as Notification[]);
+        setUnreadCount((data as Notification[]).filter((notification) => !notification.is_read).length);
+      }
+      setLoading(false);
+
+      const rawChannel = supabase.channel(`notifications-${userId}`) as any;
+      channel = rawChannel
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, (payload: { new: Notification }) => {
+          setNotifications((prev) => {
+            const next = [payload.new, ...prev.filter((item) => item.id !== payload.new.id)];
+            setUnreadCount(next.filter((item) => !item.is_read).length);
+            return next;
+          });
+        })
+        .subscribe();
+    };
+
+    void loadNotifications();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [userId]);
 
   const markAsRead = async (notificationId: string) => {
-    await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', notificationId);
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.id === notificationId ? { ...notification, is_read: true } : notification
+      )
+    );
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+
+    if (!userId || !isSupabaseConfigured) return;
+    const notificationsClient = (supabase as any).from('notifications');
+    await notificationsClient.update({ is_read: true }).eq('id', notificationId);
   };
 
   const markAllAsRead = async () => {
-    if (!userId) return;
-    await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('user_id', userId)
-      .eq('is_read', false);
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setNotifications((prev) => prev.map((notification) => ({ ...notification, is_read: true })));
     setUnreadCount(0);
+
+    if (!userId || !isSupabaseConfigured) return;
+    const notificationsClient = (supabase as any).from('notifications');
+    await notificationsClient.update({ is_read: true }).eq('user_id', userId);
   };
 
   return { notifications, unreadCount, loading, markAsRead, markAllAsRead };

@@ -1,7 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { Plus, Search, Edit, Trash2, Ban, CheckCircle } from 'lucide-react';
 import { useEmployees } from '@/hooks/useEmployees';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { canAccessEmployees } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,17 +16,28 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 export default function EmployeesPage() {
+  const [, setLocation] = useLocation();
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [suspendId, setSuspendId] = useState<string | null>(null);
   const [activateId, setActivateId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { profile } = useAuthContext();
 
-  const { employees, loading, deleteEmployee, suspendEmployee, activateEmployee } = useEmployees({
-    status: statusFilter,
-    search: searchQuery,
-  });
+  useEffect(() => {
+    if (!canAccessEmployees(profile)) {
+      setLocation('/');
+    }
+  }, [profile, setLocation]);
+
+  const { employees, loading, deleteEmployee, suspendEmployee, activateEmployee } = useEmployees(
+    {
+      status: statusFilter,
+      search: searchQuery,
+    },
+    profile,
+  );
 
   const filteredEmployees = useMemo(() => {
     let result = employees;
@@ -101,7 +115,7 @@ export default function EmployeesPage() {
           <h2 className="text-2xl font-bold text-foreground">Employee Directory</h2>
           <p className="text-sm text-muted-foreground">Manage airline staff and crew members</p>
         </div>
-        <Button data-testid="button-add-employee">
+        <Button data-testid="button-add-employee" onClick={() => setLocation('/employees/new')}>
           <Plus className="h-4 w-4 mr-2" />
           Add Employee
         </Button>
@@ -205,6 +219,7 @@ export default function EmployeesPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          onClick={() => setLocation(`/employees/edit/${employee.id}`)}
                           data-testid={`button-edit-${employee.id}`}
                         >
                           <Edit className="h-4 w-4" />

@@ -8,9 +8,16 @@ import ProtectedRoute from '@/components/shared/ProtectedRoute';
 import AppLayout from '@/components/layout/AppLayout';
 import LoginPage from '@/pages/auth/LoginPage';
 import DashboardPage from '@/pages/dashboard/DashboardPage';
+import DepartmentPage from '@/pages/dashboard/DepartmentPage';
+import DepartmentsPage from '@/pages/dashboard/DepartmentsPage';
+import AircraftPage from '@/pages/dashboard/AircraftPage';
+import RoutesPage from '@/pages/dashboard/RoutesPage';
+import MaintenancePage from '@/pages/dashboard/MaintenancePage';
+import SystemLogsPage from '@/pages/dashboard/SystemLogsPage';
 import FlightsPage from '@/pages/flights/FlightsPage';
 import NewFlightPage from '@/pages/flights/NewFlightPage';
 import EmployeesPage from '@/pages/employees/EmployeesPage';
+import EmployeeFormPage from '@/pages/employees/EmployeeFormPage';
 import AnalyticsPage from '@/pages/analytics/AnalyticsPage';
 import NotificationsPage from '@/pages/notifications/NotificationsPage';
 import SettingsPage from '@/pages/settings/SettingsPage';
@@ -30,16 +37,25 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
-      <Route path="/">
+      <Route path="/(.*)">
         {() => (
           <ProtectedRoute>
             <AppLayout>
               <Switch>
                 <Route path="/" component={DashboardPage} />
+                <Route path="/department/:slug" component={DepartmentPage} />
                 <Route path="/flights" component={FlightsPage} />
                 <Route path="/flights/new" component={NewFlightPage} />
+                <Route path="/flights/edit/:id" component={NewFlightPage} />
                 <Route path="/employees" component={EmployeesPage} />
+                <Route path="/employees/new" component={EmployeeFormPage} />
+                <Route path="/employees/edit/:id" component={EmployeeFormPage} />
                 <Route path="/analytics" component={AnalyticsPage} />
+                <Route path="/departments" component={DepartmentsPage} />
+                <Route path="/aircraft" component={AircraftPage} />
+                <Route path="/routes" component={RoutesPage} />
+                <Route path="/maintenance" component={MaintenancePage} />
+                <Route path="/logs" component={SystemLogsPage} />
                 <Route path="/notifications" component={NotificationsPage} />
                 <Route path="/settings" component={SettingsPage} />
                 <Route component={NotFound} />

@@ -1,8 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { Plus, Search, Edit, Trash2, Clock } from 'lucide-react';
 import { useFlights } from '@/hooks/useFlights';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { canAccessFlights } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,6 +21,13 @@ export default function FlightsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { profile } = useAuthContext();
+
+  useEffect(() => {
+    if (!canAccessFlights(profile)) {
+      setLocation('/');
+    }
+  }, [profile, setLocation]);
 
   const { flights, loading, deleteFlight, updateFlight } = useFlights({
     status: statusFilter,
@@ -221,6 +230,7 @@ export default function FlightsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          onClick={() => setLocation(`/flights/edit/${flight.id}`)}
                           data-testid={`button-edit-${flight.id}`}
                         >
                           <Edit className="h-4 w-4" />

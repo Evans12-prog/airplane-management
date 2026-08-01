@@ -6,6 +6,18 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+type NullableKeys<T> = {
+  [K in keyof T]-?: null extends T[K] ? K : never
+}[keyof T]
+
+type Insertable<Row> = Omit<Row, 'created_at' | 'updated_at' | 'id'>
+
+type OptionalNullable<Row> = Partial<Pick<Row, NullableKeys<Row>>> & Record<string, unknown>
+
+export type TableInsert<Row> = Omit<Insertable<Row>, NullableKeys<Insertable<Row>>> &
+  Partial<Pick<Insertable<Row>, NullableKeys<Insertable<Row>>>> &
+  (Row extends { id: infer Id } ? { id?: Id } : {})
+
 export interface Database {
   public: {
     Tables: {
@@ -25,7 +37,7 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['profiles']['Row'], 'created_at' | 'updated_at'>
+        Insert: TableInsert<Database['public']['Tables']['profiles']['Row']>
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>
       }
       employees: {
@@ -50,7 +62,7 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['employees']['Row'], 'created_at' | 'updated_at'>
+        Insert: TableInsert<Database['public']['Tables']['employees']['Row']>
         Update: Partial<Database['public']['Tables']['employees']['Insert']>
       }
       flights: {
@@ -77,7 +89,7 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['flights']['Row'], 'created_at' | 'updated_at'>
+        Insert: TableInsert<Database['public']['Tables']['flights']['Row']>
         Update: Partial<Database['public']['Tables']['flights']['Insert']>
       }
       aircraft: {
@@ -98,7 +110,7 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['aircraft']['Row'], 'created_at' | 'updated_at'>
+        Insert: TableInsert<Database['public']['Tables']['aircraft']['Row']>
         Update: Partial<Database['public']['Tables']['aircraft']['Insert']>
       }
       routes: {
@@ -114,7 +126,7 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['routes']['Row'], 'created_at' | 'updated_at'>
+        Insert: TableInsert<Database['public']['Tables']['routes']['Row']>
         Update: Partial<Database['public']['Tables']['routes']['Insert']>
       }
       roles: {
@@ -126,7 +138,7 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['roles']['Row'], 'created_at' | 'updated_at'>
+        Insert: TableInsert<Database['public']['Tables']['roles']['Row']>
         Update: Partial<Database['public']['Tables']['roles']['Insert']>
       }
       departments: {
@@ -138,7 +150,7 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['departments']['Row'], 'created_at' | 'updated_at'>
+        Insert: TableInsert<Database['public']['Tables']['departments']['Row']>
         Update: Partial<Database['public']['Tables']['departments']['Insert']>
       }
       crew: {
@@ -153,7 +165,7 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['crew']['Row'], 'created_at' | 'updated_at'>
+        Insert: TableInsert<Database['public']['Tables']['crew']['Row']>
         Update: Partial<Database['public']['Tables']['crew']['Insert']>
       }
       crew_assignments: {
@@ -167,7 +179,7 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database['public']['Tables']['crew_assignments']['Row'], 'created_at' | 'updated_at'>
+        Insert: TableInsert<Database['public']['Tables']['crew_assignments']['Row']>
         Update: Partial<Database['public']['Tables']['crew_assignments']['Insert']>
       }
       maintenance: {
@@ -248,6 +260,18 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['activity_logs']['Row'], 'id' | 'created_at'>
         Update: never
+      }
+      analytics: {
+        Row: {
+          id: string
+          metric_name: string
+          metric_value: number
+          metadata: Json
+          recorded_at: string
+          created_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['analytics']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['analytics']['Insert']>
       }
     }
   }
