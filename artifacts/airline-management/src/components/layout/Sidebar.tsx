@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
-import { getAccessibleNavigationItems, getDepartmentSlug, signOut } from '@/lib/auth';
+import { mergeProfileWithUserMetadata, getAccessibleNavigationItems, getDepartmentSlug, signOut } from '@/lib/auth';
 import { toast } from 'sonner';
 
 interface SidebarProps {
@@ -48,9 +48,10 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const [location] = useLocation();
   const { profile, user } = useAuthContext();
   const { unreadCount } = useNotifications(user?.id);
-  const departmentSlug = getDepartmentSlug(profile);
+  const fallbackProfile = mergeProfileWithUserMetadata(profile, user);
+  const departmentSlug = getDepartmentSlug(fallbackProfile);
   const departmentWorkspaceHref = `/department/${departmentSlug}`;
-  const departmentWorkspaceLabel = profile?.departments?.name ? `${profile.departments.name} Workspace` : 'Department Workspace';
+  const departmentWorkspaceLabel = fallbackProfile?.departments?.name ? `${fallbackProfile.departments.name} Workspace` : 'Department Workspace';
 
   const navItems = [
     {
@@ -59,7 +60,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       icon: Building2,
       featured: true,
     },
-    ...getAccessibleNavigationItems(profile).map((item) => ({
+    ...getAccessibleNavigationItems(fallbackProfile).map((item) => ({
       ...item,
       icon: navItemIcons[item.href] || LayoutDashboard,
       featured: false,

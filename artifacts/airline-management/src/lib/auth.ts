@@ -45,6 +45,44 @@ export interface ProfileLike {
   departments?: { name?: string | null } | null;
 }
 
+export interface UserMetadataLike {
+  app_metadata?: {
+    role?: string | null;
+    department?: string | null;
+  };
+  user_metadata?: {
+    role?: string | null;
+    department?: string | null;
+  };
+}
+
+export function mergeProfileWithUserMetadata(
+  profile?: ProfileLike | null,
+  user?: UserMetadataLike | null,
+): ProfileLike | null {
+  if (!profile && !user) return null;
+
+  const roleName =
+    profile?.roles?.name ||
+    user?.app_metadata?.role ||
+    user?.user_metadata?.role ||
+    null;
+  const departmentName =
+    profile?.departments?.name ||
+    user?.app_metadata?.department ||
+    user?.user_metadata?.department ||
+    null;
+
+  if (!roleName && !departmentName) {
+    return profile ?? null;
+  }
+
+  return {
+    roles: { name: roleName },
+    departments: { name: departmentName },
+  };
+}
+
 export const ROLE_LABELS: Record<RoleName, string> = {
   super_admin: 'Super Admin',
   airline_manager: 'Airline Manager',

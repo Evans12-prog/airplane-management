@@ -45,8 +45,8 @@ function fetchWithTimeout(input: RequestInfo, init?: RequestInit) {
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: true,
-    persistSession: true,
+    autoRefreshToken: false,
+    persistSession: false,
     detectSessionInUrl: true,
     storageKey: 'skyair-auth-token',
   },
