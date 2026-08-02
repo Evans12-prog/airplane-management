@@ -43,7 +43,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
       />
-      <div className={cn('transition-all duration-300', collapsed ? 'lg:ml-[80px]' : 'lg:ml-[240px]')}>
+      <div className={cn('transition-all duration-300', collapsed ? 'md:ml-[80px]' : 'md:ml-[240px]')}>
         <Header
           title={title}
           onMenuToggle={() => setMobileOpen((value) => !value)}

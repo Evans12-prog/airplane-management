@@ -27,6 +27,8 @@ export function Header({ title, onMenuToggle, mobileMenuOpen }: HeaderProps) {
           className="md:hidden"
           onClick={onMenuToggle}
           aria-label="Toggle navigation menu"
+          aria-expanded={mobileMenuOpen}
+          aria-controls="sidebar"
         >
           {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>

@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
-import { AUTH_STATE_EVENT, createProfile, getProfile, getLocalDemoProfile, getStoredLocalSession } from '@/lib/auth';
+import {
+  AUTH_STATE_EVENT,
+  createProfile,
+  getProfile,
+  getLocalDemoProfile,
+  getStoredLocalSession,
+  mergeProfileWithUserMetadata,
+} from '@/lib/auth';
 
 export interface Profile {
   id: string;
@@ -36,13 +43,15 @@ export function useAuth() {
     isManager: false,
   });
 
-  const loadProfile = useCallback(async (userId: string, email: string) => {
+  const loadProfile = useCallback(async (userId: string, email: string, userMetadata?: User | null) => {
+    const metadataProfile = mergeProfileWithUserMetadata(null, userMetadata);
+
     try {
       const profile = (await getProfile(userId)) as Profile;
-      const roleName = profile?.roles?.name || null;
+      const roleName = profile?.roles?.name || metadataProfile?.roles?.name || null;
       setState((prev) => ({
         ...prev,
-        profile,
+        profile: profile || metadataProfile,
         isAdmin: ['admin', 'super_admin'].includes(roleName || ''),
         isManager: ['admin', 'super_admin', 'manager'].includes(roleName || ''),
       }));
@@ -51,19 +60,21 @@ export function useAuth() {
       try {
         await createProfile(userId, email);
         const fallbackProfile = (await getProfile(userId).catch(() => null)) as Profile | null;
-        const fallbackRoleName = fallbackProfile?.roles?.name || null;
+        const mergedProfile = mergeProfileWithUserMetadata(fallbackProfile, userMetadata);
+        const fallbackRoleName = mergedProfile?.roles?.name || null;
         setState((prev) => ({
           ...prev,
-          profile: fallbackProfile,
+          profile: mergedProfile,
           isAdmin: ['admin', 'super_admin'].includes(fallbackRoleName || ''),
           isManager: ['admin', 'super_admin', 'manager'].includes(fallbackRoleName || ''),
         }));
       } catch {
+        const fallbackRoleName = metadataProfile?.roles?.name || null;
         setState((prev) => ({
           ...prev,
-          profile: null,
-          isAdmin: false,
-          isManager: false,
+          profile: metadataProfile,
+          isAdmin: ['admin', 'super_admin'].includes(fallbackRoleName || ''),
+          isManager: ['admin', 'super_admin', 'manager'].includes(fallbackRoleName || ''),
         }));
       }
     }
@@ -140,7 +151,7 @@ export function useAuth() {
           loading: false,
         }));
         if (session?.user) {
-          void loadProfile(session.user.id, session.user.email || '');
+          void loadProfile(session.user.id, session.user.email || '', session.user);
         }
       } catch {
         setState((prev) => ({
@@ -166,7 +177,7 @@ export function useAuth() {
           loading: false,
         }));
         if (session?.user) {
-          void loadProfile(session.user.id, session.user.email || '');
+          void loadProfile(session.user.id, session.user.email || '', session.user);
         } else {
           setState((prev) => ({
             ...prev,

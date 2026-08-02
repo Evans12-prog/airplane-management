@@ -76,6 +76,10 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
     }
   };
 
+  const handleNavItemClick = () => {
+    onMobileClose();
+  };
+
   const initials = profile?.full_name
     ?.split(' ')
     .map((n) => n[0])
@@ -93,12 +97,15 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       />
 
       <aside
+        id="sidebar"
         className={cn(
           'fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-300 md:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
           collapsed ? 'md:w-[80px]' : 'md:w-[240px]',
           'w-[280px]',
         )}
+        aria-hidden={!mobileOpen}
+        role="dialog"
       >
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
           <Link href="/" className="flex items-center gap-2 text-sidebar-foreground" onClick={onMobileClose}>
@@ -150,7 +157,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={onMobileClose}
+                onClick={handleNavItemClick}
                 className={cn(
                   'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all',
                   isActive
