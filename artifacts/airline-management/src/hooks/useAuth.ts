@@ -45,20 +45,27 @@ export function useAuth() {
         profile,
         isAdmin: ['admin', 'super_admin'].includes(roleName || ''),
         isManager: ['admin', 'super_admin', 'manager'].includes(roleName || ''),
-        loading: false,
       }));
     } catch {
-      // Profile might not exist yet — create it and immediately reload it
-      await createProfile(userId, email);
-      const fallbackProfile = (await getProfile(userId).catch(() => null)) as Profile | null;
-      const fallbackRoleName = fallbackProfile?.roles?.name || null;
-      setState((prev) => ({
-        ...prev,
-        profile: fallbackProfile,
-        isAdmin: ['admin', 'super_admin'].includes(fallbackRoleName || ''),
-        isManager: ['admin', 'super_admin', 'manager'].includes(fallbackRoleName || ''),
-        loading: false,
-      }));
+      // Profile might not exist yet — create it and reload it, but do not block the app.
+      try {
+        await createProfile(userId, email);
+        const fallbackProfile = (await getProfile(userId).catch(() => null)) as Profile | null;
+        const fallbackRoleName = fallbackProfile?.roles?.name || null;
+        setState((prev) => ({
+          ...prev,
+          profile: fallbackProfile,
+          isAdmin: ['admin', 'super_admin'].includes(fallbackRoleName || ''),
+          isManager: ['admin', 'super_admin', 'manager'].includes(fallbackRoleName || ''),
+        }));
+      } catch {
+        setState((prev) => ({
+          ...prev,
+          profile: null,
+          isAdmin: false,
+          isManager: false,
+        }));
+      }
     }
   }, []);
 
@@ -130,12 +137,10 @@ export function useAuth() {
           ...prev,
           session,
           user: session?.user ?? null,
-          loading: Boolean(session?.user),
+          loading: false,
         }));
         if (session?.user) {
-          await loadProfile(session.user.id, session.user.email || '');
-        } else {
-          setState((prev) => ({ ...prev, loading: false }));
+          void loadProfile(session.user.id, session.user.email || '');
         }
       } catch {
         setState((prev) => ({
@@ -158,10 +163,10 @@ export function useAuth() {
           ...prev,
           session,
           user: session?.user ?? null,
-          loading: Boolean(session?.user),
+          loading: false,
         }));
         if (session?.user) {
-          await loadProfile(session.user.id, session.user.email || '');
+          void loadProfile(session.user.id, session.user.email || '');
         } else {
           setState((prev) => ({
             ...prev,

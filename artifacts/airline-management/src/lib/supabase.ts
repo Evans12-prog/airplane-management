@@ -25,6 +25,24 @@ const isConfigured = Boolean(
 const supabaseUrl = isConfigured ? rawSupabaseUrl : 'https://placeholder.supabase.co';
 const supabaseAnonKey = isConfigured ? rawSupabaseAnonKey : 'placeholder-key';
 
+function fetchWithTimeout(input: RequestInfo, init?: RequestInit) {
+  const timeoutMs = 15000;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  const signal = init?.signal
+    ? new AbortController().signal
+    : controller.signal;
+
+  const mergedInit = {
+    ...init,
+    signal,
+  };
+
+  return fetch(input, mergedInit).finally(() => {
+    window.clearTimeout(timeout);
+  });
+}
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -37,6 +55,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
       eventsPerSecond: 10,
     },
   },
+  fetch: fetchWithTimeout,
 });
 
 // Re-export as admin alias — same client in browser context (service role is backend-only)
