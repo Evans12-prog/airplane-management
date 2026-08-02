@@ -1,4 +1,4 @@
-import { ShieldCheck, Sparkles, Eye, Lock, Users, Plane, Wrench, BarChart3, AlertTriangle, BadgeCheck } from 'lucide-react';
+import { ShieldCheck, Sparkles, Eye, Lock, Users, Plane, Wrench, BarChart3, AlertTriangle, BadgeCheck, Route } from 'lucide-react';
 
 const roleCards = [
   {
@@ -78,7 +78,7 @@ const roleCards = [
       'Review airport information and route profitability.',
     ],
     cannot: ['Operate maintenance scheduling'],
-    icon: Map,
+    icon: Route,
   },
   {
     title: 'Maintenance Officer',

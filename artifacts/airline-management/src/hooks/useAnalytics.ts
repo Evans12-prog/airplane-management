@@ -48,8 +48,8 @@ const fallbackDelayData = [
 ];
 
 export function useDashboardStats() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats | null>(fallbackStats);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -144,8 +144,8 @@ export function useDashboardStats() {
 }
 
 export function useDelayTrends() {
-  const [data, setData] = useState<{ month: string; delays: number; onTime: number; cancelled: number }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<{ month: string; delays: number; onTime: number; cancelled: number }[]>(fallbackDelayData);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;

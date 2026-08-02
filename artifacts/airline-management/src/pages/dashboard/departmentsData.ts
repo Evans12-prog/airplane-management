@@ -4,8 +4,8 @@ import {
   CircleDollarSign,
   ClipboardList,
   HardHat,
-  Map,
   Plane,
+  Route,
   ShieldCheck,
   Users,
   Wrench,
@@ -91,7 +91,7 @@ export const departmentCards: DepartmentCard[] = [
     panelFocus: 'Route capacity',
     panelMetric: '18 active routes',
     accent: 'from-amber-600 to-orange-500',
-    icon: Map,
+    icon: Route,
     highlights: ['Slot planning', 'Demand review', 'Punctuality tracking'],
     airportActivity: [
       { title: 'Capacity planning', detail: 'Reviewing routes against airport slot demands and operational constraints.', status: 'In progress' },
