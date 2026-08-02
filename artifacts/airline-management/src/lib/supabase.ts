@@ -1,10 +1,29 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/supabase';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
+const rawSupabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() ?? '';
+const rawSupabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ?? '';
 
-const isConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+function isPlaceholderValue(value: string) {
+  return [
+    '',
+    'https://placeholder.supabase.co',
+    'https://your-project-ref.supabase.co',
+    'placeholder-key',
+    'your-anon-key',
+    'your-project-ref.supabase.co',
+  ].includes(value);
+}
+
+const isConfigured = Boolean(
+  rawSupabaseUrl &&
+    rawSupabaseAnonKey &&
+    !isPlaceholderValue(rawSupabaseUrl) &&
+    !isPlaceholderValue(rawSupabaseAnonKey),
+);
+
+const supabaseUrl = isConfigured ? rawSupabaseUrl : 'https://placeholder.supabase.co';
+const supabaseAnonKey = isConfigured ? rawSupabaseAnonKey : 'placeholder-key';
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
