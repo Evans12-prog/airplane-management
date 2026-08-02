@@ -8,6 +8,7 @@ import {
   Settings,
   Layers,
   Map,
+  Shield,
   Wrench,
   ShieldAlert,
   LogOut,
@@ -42,13 +43,14 @@ const navItemIcons: Record<string, typeof LayoutDashboard> = {
   '/logs': ShieldAlert,
   '/notifications': Bell,
   '/settings': Settings,
+  '/roles': Shield,
 };
 
 export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
   const [location] = useLocation();
   const { profile, user } = useAuthContext();
   const { unreadCount } = useNotifications(user?.id);
-  const fallbackProfile = mergeProfileWithUserMetadata(profile, user);
+  const fallbackProfile = mergeProfileWithUserMetadata(profile, user as any);
   const departmentSlug = getDepartmentSlug(fallbackProfile);
   const departmentWorkspaceHref = `/department/${departmentSlug}`;
   const departmentWorkspaceLabel = fallbackProfile?.departments?.name ? `${fallbackProfile.departments.name} Workspace` : 'Department Workspace';
@@ -59,6 +61,12 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       label: departmentWorkspaceLabel,
       icon: Building2,
       featured: true,
+    },
+    {
+      href: '/roles',
+      label: 'Role & Permissions',
+      icon: Shield,
+      featured: false,
     },
     ...getAccessibleNavigationItems(fallbackProfile).map((item) => ({
       ...item,
@@ -104,8 +112,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           collapsed ? 'md:w-[80px]' : 'md:w-[240px]',
           'w-[280px]',
         )}
-        aria-hidden={!mobileOpen}
-        role="dialog"
+        aria-label="Sidebar navigation"
       >
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
           <Link href="/" className="flex items-center gap-2 text-sidebar-foreground" onClick={onMobileClose}>

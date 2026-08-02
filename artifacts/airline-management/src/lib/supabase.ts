@@ -28,10 +28,11 @@ const supabaseAnonKey = isConfigured ? rawSupabaseAnonKey : 'placeholder-key';
 function fetchWithTimeout(input: RequestInfo, init?: RequestInit) {
   const timeoutMs = 15000;
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
-  const signal = init?.signal
-    ? new AbortController().signal
-    : controller.signal;
+  const targetWindow = typeof window !== 'undefined' ? window : undefined;
+  const timeout = targetWindow
+    ? targetWindow.setTimeout(() => controller.abort(), timeoutMs)
+    : globalThis.setTimeout(() => controller.abort(), timeoutMs);
+  const signal = init?.signal ?? controller.signal;
 
   const mergedInit = {
     ...init,
@@ -39,14 +40,18 @@ function fetchWithTimeout(input: RequestInfo, init?: RequestInit) {
   };
 
   return fetch(input, mergedInit).finally(() => {
-    window.clearTimeout(timeout);
+    if (targetWindow) {
+      targetWindow.clearTimeout(timeout as number);
+    } else {
+      globalThis.clearTimeout(timeout as number);
+    }
   });
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: false,
-    persistSession: false,
+    autoRefreshToken: true,
+    persistSession: true,
     detectSessionInUrl: true,
     storageKey: 'skyair-auth-token',
   },
@@ -55,7 +60,9 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
       eventsPerSecond: 10,
     },
   },
-  fetch: fetchWithTimeout,
+  global: {
+    fetch: fetchWithTimeout as typeof fetch,
+  },
 });
 
 // Re-export as admin alias — same client in browser context (service role is backend-only)

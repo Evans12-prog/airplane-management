@@ -118,16 +118,16 @@ export function useFlights(filters?: {
         .order('departure_time', { ascending: true });
 
       if (filters?.status && filters.status !== 'all') {
-        query = query.eq('status', filters.status);
+        (query as any).eq('status', filters.status);
       }
 
       if (filters?.search) {
-        query = query.ilike('flight_number', `%${filters.search}%`);
+        (query as any).ilike('flight_number', `%${filters.search}%`);
       }
 
       const { data, error } = await query;
       if (error) throw error;
-      setFlights((data || []) as Flight[]);
+      setFlights((data || []) as unknown as Flight[]);
     } catch (err) {
       setFlights(fallbackFlights);
       setError(err instanceof Error ? err.message : 'Failed to fetch flights');
@@ -144,14 +144,16 @@ export function useFlights(filters?: {
     }
 
     // Subscribe to real-time flight updates
+    const channelName = `flights-changes-${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel('flights-changes')
+      .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'flights' }, () => {
         fetchFlights();
       })
       .subscribe();
 
     return () => {
+      channel.unsubscribe?.();
       supabase.removeChannel(channel);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -172,7 +174,7 @@ export function useFlights(filters?: {
   };
 
   const deleteFlight = async (id: string) => {
-    const { error } = await supabase.from('flights').delete().eq('id', id);
+    const { error } = await (supabase.from('flights') as any).delete().eq('id', id);
     if (error) throw error;
     await fetchFlights();
   };

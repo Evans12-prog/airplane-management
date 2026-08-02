@@ -64,18 +64,17 @@ export default function NewFlightPage() {
   useEffect(() => {
     const fetchData = async () => {
       const [aircraftRes, routesRes, captainsRes] = await Promise.all([
-        supabase.from('aircraft').select('*').eq('status', 'active'),
-        supabase.from('routes').select('*').eq('is_active', true),
-        supabase
-          .from('employees')
+        (supabase.from('aircraft') as any).select('*').eq('status', 'active'),
+        (supabase.from('routes') as any).select('*').eq('is_active', true),
+        (supabase.from('employees') as any)
           .select('*')
           .or('job_title.ilike.%Captain%,job_title.ilike.%Pilot%')
           .eq('status', 'active'),
       ]);
 
-      setAircraft(aircraftRes.data || []);
-      setRoutes(routesRes.data || []);
-      setCaptains(captainsRes.data || []);
+      setAircraft((aircraftRes.data || []) as Aircraft[]);
+      setRoutes((routesRes.data || []) as Route[]);
+      setCaptains((captainsRes.data || []) as Employee[]);
 
       if (isEditing && flightId) {
         const { data: existingFlight } = await (supabase.from('flights') as any)

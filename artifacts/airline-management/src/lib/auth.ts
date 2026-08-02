@@ -1,4 +1,5 @@
 import type { Database } from '@/types/supabase';
+import type { User } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from './supabase';
 
 export interface AuthUser {
@@ -42,44 +43,58 @@ export type RoleName =
 
 export interface ProfileLike {
   roles?: { name?: string | null } | null;
-  departments?: { name?: string | null } | null;
+  departments?: { id?: string | null; name?: string | null } | null;
 }
 
 export interface UserMetadataLike {
   app_metadata?: {
     role?: string | null;
     department?: string | null;
+    departmentSlug?: string | null;
   };
   user_metadata?: {
     role?: string | null;
     department?: string | null;
+    departmentSlug?: string | null;
   };
 }
 
+const isLocalhost =
+  typeof window !== 'undefined' &&
+  ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+const isLocalDemoEnvironment = !isSupabaseConfigured || import.meta.env.DEV || isLocalhost;
+
 export function mergeProfileWithUserMetadata(
   profile?: ProfileLike | null,
-  user?: UserMetadataLike | null,
+  user?: UserMetadataLike | User | null,
 ): ProfileLike | null {
   if (!profile && !user) return null;
 
+  const metadata = user as UserMetadataLike | null | undefined;
   const roleName =
     profile?.roles?.name ||
-    user?.app_metadata?.role ||
-    user?.user_metadata?.role ||
+    metadata?.app_metadata?.role ||
+    metadata?.user_metadata?.role ||
     null;
   const departmentName =
     profile?.departments?.name ||
-    user?.app_metadata?.department ||
-    user?.user_metadata?.department ||
+    metadata?.app_metadata?.department ||
+    metadata?.user_metadata?.department ||
+    null;
+  const departmentSlug =
+    profile?.departments?.id ||
+    metadata?.app_metadata?.departmentSlug ||
+    metadata?.user_metadata?.departmentSlug ||
     null;
 
-  if (!roleName && !departmentName) {
+  if (!roleName && !departmentName && !departmentSlug) {
     return profile ?? null;
   }
 
   return {
     roles: { name: roleName },
-    departments: { name: departmentName },
+    departments: { id: departmentSlug, name: departmentName },
   };
 }
 
@@ -98,7 +113,7 @@ export const ROLE_LABELS: Record<RoleName, string> = {
   employee: 'Employee',
 };
 
-interface LocalDemoAccount {
+export interface LocalDemoAccount {
   id: string;
   email: string;
   password: string;
@@ -113,13 +128,15 @@ const LOCAL_STORAGE_KEYS = {
   users: 'skyair-local-users',
 };
 
+const LOCAL_EMPLOYEES_STORAGE_KEY = 'skyair-local-employees';
+
 export const AUTH_STATE_EVENT = 'skyair-auth-state-changed';
 
-const DEFAULT_DEMO_ACCOUNTS: LocalDemoAccount[] = [
+export const DEMO_ACCOUNT_OPTIONS: LocalDemoAccount[] = [
   {
     id: 'local-admin-user',
     email: 'menyahevans@gmail.com',
-    password: 'Evans123',
+    password: 'Evans123!',
     fullName: 'Administrator',
     department: 'Administration',
     departmentSlug: 'administration',
@@ -244,8 +261,38 @@ const DEFAULT_DEMO_ACCOUNTS: LocalDemoAccount[] = [
   },
 ];
 
+const DEFAULT_DEMO_ACCOUNTS: LocalDemoAccount[] = DEMO_ACCOUNT_OPTIONS;
+
 function normalizeName(value?: string | null) {
   return (value || '').trim().toLowerCase();
+}
+
+function getAcceptedPasswordVariants(password: string) {
+  const trimmed = password.trim();
+  const variants = new Set<string>([trimmed]);
+
+  const lowercase = trimmed.toLowerCase();
+  if (lowercase !== trimmed) {
+    variants.add(lowercase);
+  }
+
+  if (!trimmed.endsWith('!')) {
+    variants.add(`${trimmed}!`);
+  }
+
+  const withoutTrailingBang = trimmed.replace(/!+$/, '');
+  if (withoutTrailingBang !== trimmed) {
+    variants.add(withoutTrailingBang);
+  } else {
+    variants.add(trimmed.replace(/!$/, ''));
+  }
+
+  const lowercaseWithoutBang = withoutTrailingBang.toLowerCase();
+  if (lowercaseWithoutBang !== lowercase) {
+    variants.add(lowercaseWithoutBang);
+  }
+
+  return Array.from(variants);
 }
 
 async function ensureRoleRecord(roleName: RoleName) {
@@ -315,7 +362,75 @@ function saveStoredLocalUsers(accounts: LocalDemoAccount[]) {
 }
 
 function getAllDemoAccounts() {
-  return [...DEFAULT_DEMO_ACCOUNTS, ...getStoredLocalUsers()];
+  const storedUsers = getStoredLocalUsers();
+
+  if (!storedUsers.length) {
+    saveStoredLocalUsers(DEFAULT_DEMO_ACCOUNTS);
+    return [...DEFAULT_DEMO_ACCOUNTS];
+  }
+
+  const seen = new Set<string>();
+  return [...DEFAULT_DEMO_ACCOUNTS, ...storedUsers].filter((account) => {
+    const key = account.email.trim().toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function getStoredLocalEmployees() {
+  if (typeof window === 'undefined') {
+    return [] as Array<Record<string, unknown>>;
+  }
+
+  try {
+    const value = window.localStorage.getItem(LOCAL_EMPLOYEES_STORAGE_KEY);
+    return value ? (JSON.parse(value) as Array<Record<string, unknown>>) : [];
+  } catch {
+    return [] as Array<Record<string, unknown>>;
+  }
+}
+
+function saveStoredLocalEmployees(employees: Array<Record<string, unknown>>) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(LOCAL_EMPLOYEES_STORAGE_KEY, JSON.stringify(employees));
+}
+
+function upsertLocalEmployeeRecord(regData: RegistrationData, account: LocalDemoAccount) {
+  const nextEmployee = {
+    id: account.id,
+    employee_number: regData.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
+    profile_id: account.id,
+    full_name: regData.fullName,
+    email: regData.email.trim().toLowerCase(),
+    phone: regData.phone || null,
+    department_id: regData.department || account.department,
+    role_id: regData.role || account.roleName,
+    job_title: regData.jobRole || 'Employee',
+    employment_type: 'full_time',
+    status: 'active',
+    hire_date: new Date().toISOString().split('T')[0],
+    salary: null,
+    address: null,
+    emergency_contact: regData.emergencyContactName || regData.emergencyContactPhone || regData.emergencyContactRelation
+      ? {
+          name: regData.emergencyContactName,
+          phone: regData.emergencyContactPhone,
+          relation: regData.emergencyContactRelation,
+        }
+      : null,
+    certifications: [],
+    notes: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const existingEmployees = getStoredLocalEmployees();
+  const nextEmployees = [nextEmployee, ...existingEmployees.filter((employee) => employee.id !== account.id)];
+  saveStoredLocalEmployees(nextEmployees);
 }
 
 function notifyAuthStateChanged() {
@@ -329,6 +444,12 @@ function notifyAuthStateChanged() {
 function saveLocalSession(account: LocalDemoAccount) {
   if (typeof window === 'undefined') {
     return;
+  }
+
+  const existingUsers = getStoredLocalUsers();
+  const hasAccount = existingUsers.some((savedAccount) => savedAccount.email.toLowerCase() === account.email.toLowerCase());
+  if (!hasAccount) {
+    saveStoredLocalUsers([...existingUsers, account]);
   }
 
   window.localStorage.setItem(
@@ -382,9 +503,14 @@ export function getLocalDemoProfile(account: LocalDemoAccount) {
 
 export function getLocalDemoAccount(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase();
+  const normalizedPassword = password.trim();
+
   return getAllDemoAccounts().find((account) => {
     const matchesEmail = account.email.toLowerCase() === normalizedEmail;
-    const matchesPassword = account.password === password;
+    const matchesPassword = getAcceptedPasswordVariants(account.password).some((variant) => {
+      const candidate = variant.trim();
+      return candidate === normalizedPassword || candidate.toLowerCase() === normalizedPassword.toLowerCase();
+    });
     return matchesEmail && matchesPassword;
   });
 }
@@ -398,10 +524,11 @@ export function getDepartmentName(profile?: ProfileLike | null) {
 }
 
 export function getDepartmentSlug(profile?: ProfileLike | null) {
+  const departmentId = profile?.departments?.id;
   const departmentName = getDepartmentName(profile);
   const roleName = getRoleName(profile);
 
-  const source = departmentName || roleName || 'operations';
+  const source = departmentId || departmentName || roleName || 'operations';
   const normalized = normalizeName(source)
     .replace(/&/g, 'and')
     .replace(/[^a-z0-9]+/g, '-')
@@ -677,49 +804,53 @@ export function getAccessibleNavigationItems(profile?: ProfileLike | null) {
 }
 
 export async function signIn(email: string, password: string) {
-  if (!isSupabaseConfigured) {
-    const account = getLocalDemoAccount(email, password);
+  const localAccount = getLocalDemoAccount(email, password);
 
-    if (account) {
-      const profile = getLocalDemoProfile(account);
-      saveLocalSession(account);
-
-      return {
-        data: {
-          user: {
-            id: account.id,
-            email: account.email,
-            app_metadata: {
-              role: account.roleName,
-              department: account.department,
-              departmentSlug: account.departmentSlug,
-              full_name: account.fullName,
-            },
+  if (localAccount) {
+    saveLocalSession(localAccount);
+    return {
+      data: {
+        user: {
+          id: localAccount.id,
+          email: localAccount.email,
+          app_metadata: {
+            role: localAccount.roleName,
+            department: localAccount.department,
+            departmentSlug: localAccount.departmentSlug,
+            full_name: localAccount.fullName,
           },
-          session: {
-            access_token: `local-${account.id}-token`,
-            user: {
-              id: account.id,
-              email: account.email,
-              app_metadata: {
-                role: account.roleName,
-                department: account.department,
-                departmentSlug: account.departmentSlug,
-                full_name: account.fullName,
-              },
+        },
+        session: {
+          access_token: `local-${localAccount.id}-token`,
+          user: {
+            id: localAccount.id,
+            email: localAccount.email,
+            app_metadata: {
+              role: localAccount.roleName,
+              department: localAccount.department,
+              departmentSlug: localAccount.departmentSlug,
+              full_name: localAccount.fullName,
             },
           },
         },
-        error: null,
-      } as any;
-    }
-
-    throw new Error('Supabase is not configured. Use one of the department demo credentials or configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+      },
+      error: null,
+    } as any;
   }
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
-  return data;
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase is not configured. Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY or use a valid internal demo account.');
+  }
+
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    throw error;
+  }
 }
 
 export async function signUp(regData: RegistrationData) {
@@ -749,6 +880,7 @@ export async function signUp(regData: RegistrationData) {
 
     const nextAccounts = [...getStoredLocalUsers(), account];
     saveStoredLocalUsers(nextAccounts);
+    upsertLocalEmployeeRecord(regData, account);
     saveLocalSession(account);
 
     return {
@@ -857,13 +989,29 @@ export async function signUp(regData: RegistrationData) {
 }
 
 export async function signOut() {
+  clearStoredLocalSession();
+
   if (!isSupabaseConfigured) {
-    clearStoredLocalSession();
     return;
   }
 
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  try {
+    await Promise.race([
+      supabase.auth.signOut(),
+      new Promise<{ error: Error | null }>((resolve) => {
+        const timeout = (typeof window !== 'undefined' ? window.setTimeout : globalThis.setTimeout)(() => resolve({ error: null }), 1200);
+        return () => {
+          if (typeof window !== 'undefined') {
+            window.clearTimeout(timeout as number);
+          } else {
+            globalThis.clearTimeout(timeout as number);
+          }
+        };
+      }),
+    ]);
+  } catch {
+    // Ignore sign-out network issues and keep the local session cleared.
+  }
 }
 
 export async function resetPassword(email: string) {

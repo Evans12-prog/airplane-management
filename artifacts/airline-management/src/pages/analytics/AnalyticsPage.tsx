@@ -12,6 +12,23 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, ResponsiveContaine
 
 const COLORS = ['hsl(217, 91%, 60%)', 'hsl(142, 71%, 45%)', 'hsl(38, 92%, 50%)', 'hsl(0, 72%, 51%)', 'hsl(262, 83%, 58%)'];
 
+function AnalyticsIllustration() {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/10 via-background to-background p-5">
+      <svg viewBox="0 0 320 180" className="h-40 w-full" role="img" aria-label="Analytics dashboard illustration">
+        <rect x="18" y="26" width="284" height="128" rx="20" fill="hsl(var(--card))" stroke="hsl(var(--border))" />
+        <rect x="42" y="54" width="90" height="28" rx="8" fill="hsl(217, 91%, 60%)" fillOpacity="0.18" />
+        <rect x="42" y="92" width="122" height="16" rx="8" fill="hsl(142, 71%, 45%)" fillOpacity="0.22" />
+        <rect x="42" y="116" width="88" height="16" rx="8" fill="hsl(38, 92%, 50%)" fillOpacity="0.24" />
+        <path d="M194 120 C208 103, 222 84, 238 74 C248 68, 262 66, 276 72" stroke="hsl(142, 71%, 45%)" strokeWidth="6" fill="none" strokeLinecap="round" />
+        <circle cx="194" cy="120" r="8" fill="hsl(217, 91%, 60%)" />
+        <circle cx="238" cy="74" r="8" fill="hsl(38, 92%, 50%)" />
+        <circle cx="276" cy="72" r="8" fill="hsl(262, 83%, 58%)" />
+      </svg>
+    </div>
+  );
+}
+
 export default function AnalyticsPage() {
   const { stats } = useDashboardStats();
   const { data: delayData } = useDelayTrends();
@@ -57,6 +74,25 @@ export default function AnalyticsPage() {
     return flights.reduce((sum, f) => sum + (f.passenger_count || 0) * 1800, 0);
   }, [flights]);
 
+  const aircraftStatusData = useMemo(() => [
+    { name: 'Available', value: stats?.availableAircraft || 0, color: 'hsl(142, 71%, 45%)' },
+    { name: 'Maintenance', value: stats?.aircraftInMaintenance || 0, color: 'hsl(38, 92%, 50%)' },
+  ], [stats]);
+
+  const crewStatusData = useMemo(() => [
+    { name: 'Pilots', value: stats?.pilotsAvailable || 0, color: 'hsl(217, 91%, 60%)' },
+    { name: 'Cabin Crew', value: stats?.cabinCrewAvailable || 0, color: 'hsl(262, 83%, 58%)' },
+  ], [stats]);
+
+  const financialTrendData = useMemo(() => {
+    const revenueByMonth: Record<string, number> = {};
+    flights.forEach((flight) => {
+      const month = new Date(flight.departure_time).toLocaleString('default', { month: 'short' });
+      revenueByMonth[month] = (revenueByMonth[month] || 0) + (flight.passenger_count || 0) * 1800;
+    });
+    return Object.entries(revenueByMonth).map(([month, revenue]) => ({ month, revenue }));
+  }, [flights]);
+
   const { profile } = useAuthContext();
   const [, setLocation] = useLocation();
   const canManageEmployees = canAccessEmployees(profile);
@@ -79,6 +115,15 @@ export default function AnalyticsPage() {
             Add Employee
           </Button>
         )}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <p className="text-sm font-medium text-primary">Live demo monitoring</p>
+          <h3 className="mt-2 text-xl font-semibold text-foreground">Operational performance is flowing through the experience.</h3>
+          <p className="mt-2 text-sm text-muted-foreground">Flight activity, route performance, crew availability, and revenue trends are visible for every demo department login.</p>
+        </div>
+        <AnalyticsIllustration />
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
@@ -223,15 +268,81 @@ export default function AnalyticsPage() {
           </div>
         </TabsContent>
 
-        {/* Aircraft, Crew, Financial placeholders */}
-        <TabsContent value="aircraft" className="bg-card border border-card-border rounded-xl p-12 text-center">
-          <p className="text-muted-foreground">Aircraft utilization analytics coming soon</p>
+        <TabsContent value="aircraft" className="space-y-6">
+          <div className="bg-card border border-card-border rounded-xl p-6">
+            <h3 className="text-lg font-semibold mb-4 text-foreground">Fleet Availability</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={aircraftStatusData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                  }}
+                />
+                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                  {aircraftStatusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </TabsContent>
-        <TabsContent value="crew" className="bg-card border border-card-border rounded-xl p-12 text-center">
-          <p className="text-muted-foreground">Crew utilization analytics coming soon</p>
+
+        <TabsContent value="crew" className="space-y-6">
+          <div className="bg-card border border-card-border rounded-xl p-6">
+            <h3 className="text-lg font-semibold mb-4 text-foreground">Crew Availability</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={crewStatusData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {crewStatusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </TabsContent>
-        <TabsContent value="financial" className="bg-card border border-card-border rounded-xl p-12 text-center">
-          <p className="text-muted-foreground">Financial analytics coming soon</p>
+
+        <TabsContent value="financial" className="space-y-6">
+          <div className="bg-card border border-card-border rounded-xl p-6">
+            <h3 className="text-lg font-semibold mb-4 text-foreground">Revenue Trend</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={financialTrendData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                  }}
+                />
+                <Bar dataKey="revenue" fill="hsl(262, 83%, 58%)" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

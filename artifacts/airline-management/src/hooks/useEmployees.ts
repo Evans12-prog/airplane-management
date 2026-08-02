@@ -3,6 +3,11 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { getDepartmentName } from '@/lib/auth';
 import type { Database } from '@/types/supabase';
 
+type Employee = Database['public']['Tables']['employees']['Row'] & {
+  departments?: Database['public']['Tables']['departments']['Row'] | null;
+  roles?: Database['public']['Tables']['roles']['Row'] | null;
+};
+
 const fallbackEmployees = [
   {
     id: 'demo-employee-1',
@@ -50,12 +55,88 @@ const fallbackEmployees = [
     departments: { id: 'dept-maint', name: 'Maintenance', description: null, manager_id: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
     roles: { id: 'role-maintenance', name: 'Maintenance Supervisor', description: null, permissions: {}, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
   },
-] as unknown as Employee[];
+ ] as unknown as Employee[];
 
-type Employee = Database['public']['Tables']['employees']['Row'] & {
-  departments?: Database['public']['Tables']['departments']['Row'] | null;
-  roles?: Database['public']['Tables']['roles']['Row'] | null;
-};
+const LOCAL_EMPLOYEES_STORAGE_KEY = 'skyair-local-employees';
+
+function getStoredLocalEmployees(): Employee[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const value = window.localStorage.getItem(LOCAL_EMPLOYEES_STORAGE_KEY);
+    return value ? (JSON.parse(value) as Employee[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStoredLocalEmployees(employees: Employee[]) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(LOCAL_EMPLOYEES_STORAGE_KEY, JSON.stringify(employees));
+}
+
+function getLocalEmployees(): Employee[] {
+  const persisted = getStoredLocalEmployees();
+  const merged = [...fallbackEmployees, ...persisted];
+  const uniqueById = new Map<string, Employee>();
+
+  merged.forEach((employee) => {
+    if (employee.id) {
+      uniqueById.set(employee.id, employee);
+    }
+  });
+
+  return Array.from(uniqueById.values());
+}
+
+function buildLocalEmployee(employee: Database['public']['Tables']['employees']['Insert'] & Partial<Employee>, id?: string): Employee {
+  return {
+    id: id || `local-employee-${Date.now()}`,
+    employee_number: employee.employee_number || 'EMP-NEW',
+    profile_id: employee.profile_id ?? null,
+    full_name: employee.full_name || 'New Employee',
+    email: employee.email || 'new-employee@skyair.local',
+    phone: employee.phone ?? null,
+    department_id: employee.department_id ?? null,
+    role_id: employee.role_id ?? null,
+    job_title: employee.job_title || 'Employee',
+    employment_type: employee.employment_type || 'full_time',
+    status: employee.status || 'active',
+    hire_date: employee.hire_date || new Date().toISOString().split('T')[0],
+    salary: employee.salary ?? null,
+    address: employee.address ?? null,
+    emergency_contact: employee.emergency_contact ?? null,
+    certifications: Array.isArray(employee.certifications) ? employee.certifications : [],
+    notes: employee.notes ?? null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    departments: employee.department_id
+      ? {
+          id: employee.department_id,
+          name: employee.department_id,
+          description: null,
+          manager_id: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      : null,
+    roles: employee.role_id
+      ? {
+          id: employee.role_id,
+          name: employee.role_id,
+          description: null,
+          permissions: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      : null,
+  } as Employee;
+}
 
 export function useEmployees(
   filters?: { status?: string; department?: string; search?: string },
@@ -75,7 +156,7 @@ export function useEmployees(
     setLoading(true);
     try {
       if (!isSupabaseConfigured) {
-        let nextEmployees = fallbackEmployees;
+        let nextEmployees = getLocalEmployees();
         if (restrictByDepartment && profileDepartment) {
           nextEmployees = nextEmployees.filter((employee) => {
             const employeeDepartment = employee.departments?.name?.trim().toLowerCase() || '';
@@ -93,19 +174,19 @@ export function useEmployees(
         .order('full_name', { ascending: true });
 
       if (filters?.status && filters.status !== 'all') {
-        query = query.eq('status', filters.status);
+        (query as any).eq('status', filters.status);
       }
       if (filters?.department && filters.department !== 'all') {
-        query = query.eq('department_id', filters.department);
+        (query as any).eq('department_id', filters.department);
       }
       if (filters?.search) {
-        query = query.or(`full_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,employee_number.ilike.%${filters.search}%`);
+        (query as any).or(`full_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,employee_number.ilike.%${filters.search}%`);
       }
 
       const { data, error } = await query;
       if (error) throw error;
 
-      let nextEmployees = (data || []) as Employee[];
+      let nextEmployees = (data || []) as unknown as Employee[];
       if (restrictByDepartment && profileDepartment) {
         nextEmployees = nextEmployees.filter((employee) => {
           const employeeDepartment = employee.departments?.name?.trim().toLowerCase() || '';
@@ -115,7 +196,7 @@ export function useEmployees(
 
       setEmployees(nextEmployees);
     } catch (err) {
-      let nextEmployees = fallbackEmployees;
+      let nextEmployees = getLocalEmployees();
       if (restrictByDepartment && profileDepartment) {
         nextEmployees = nextEmployees.filter((employee) => {
           const employeeDepartment = employee.departments?.name?.trim().toLowerCase() || '';
@@ -134,6 +215,14 @@ export function useEmployees(
   }, [fetchEmployees]);
 
   const createEmployee = async (employee: Database['public']['Tables']['employees']['Insert']) => {
+    if (!isSupabaseConfigured) {
+      const nextEmployee = buildLocalEmployee(employee);
+      const nextEmployees = [nextEmployee, ...getStoredLocalEmployees()];
+      saveStoredLocalEmployees(nextEmployees);
+      setEmployees(getLocalEmployees());
+      return nextEmployee;
+    }
+
     const { data, error } = await (supabase.from('employees') as any).insert(employee).select().single();
     if (error) throw error;
     await fetchEmployees();
@@ -141,6 +230,18 @@ export function useEmployees(
   };
 
   const updateEmployee = async (id: string, updates: Database['public']['Tables']['employees']['Update']) => {
+    if (!isSupabaseConfigured) {
+      const storedEmployees = getStoredLocalEmployees();
+      const existing = storedEmployees.find((employee) => employee.id === id);
+      const nextEmployee = existing
+        ? ({ ...existing, ...updates, id, updated_at: new Date().toISOString() } as Employee)
+        : buildLocalEmployee(updates as Database['public']['Tables']['employees']['Insert'] & Partial<Employee>, id);
+      const nextEmployees = [nextEmployee, ...storedEmployees.filter((employee) => employee.id !== id)];
+      saveStoredLocalEmployees(nextEmployees);
+      setEmployees(getLocalEmployees());
+      return nextEmployee;
+    }
+
     const { data, error } = await (supabase.from('employees') as any).update(updates).eq('id', id).select().single();
     if (error) throw error;
     await fetchEmployees();
@@ -148,7 +249,14 @@ export function useEmployees(
   };
 
   const deleteEmployee = async (id: string) => {
-    const { error } = await supabase.from('employees').delete().eq('id', id);
+    if (!isSupabaseConfigured) {
+      const nextEmployees = getStoredLocalEmployees().filter((employee) => employee.id !== id);
+      saveStoredLocalEmployees(nextEmployees);
+      setEmployees(getLocalEmployees());
+      return;
+    }
+
+    const { error } = await (supabase.from('employees') as any).delete().eq('id', id);
     if (error) throw error;
     await fetchEmployees();
   };

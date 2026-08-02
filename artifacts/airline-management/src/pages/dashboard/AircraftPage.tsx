@@ -14,6 +14,20 @@ const aircraftPriorityItems = [
   'Maintenance clearance updates before the next dispatch window.',
 ];
 
+function AircraftIllustration() {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-sky-500/10 via-background to-background p-5">
+      <svg viewBox="0 0 320 180" className="h-40 w-full" role="img" aria-label="Aircraft operations illustration">
+        <rect x="24" y="32" width="272" height="120" rx="20" fill="hsl(var(--card))" stroke="hsl(var(--border))" />
+        <path d="M84 108 L146 84 L188 84 L244 70 L256 90 L208 104 L166 104 L128 120 L94 118 Z" fill="hsl(217, 91%, 60%)" fillOpacity="0.88" />
+        <path d="M98 86 L74 72 L60 76 L86 94 Z" fill="hsl(142, 71%, 45%)" />
+        <circle cx="108" cy="120" r="10" fill="hsl(38, 92%, 50%)" />
+        <circle cx="208" cy="102" r="10" fill="hsl(262, 83%, 58%)" />
+      </svg>
+    </div>
+  );
+}
+
 export default function AircraftPage() {
   const { profile } = useAuthContext();
   const hasAccess = isAdminProfile(profile) || isFleetManagerProfile(profile) || isMaintenanceOfficerProfile(profile);
@@ -31,12 +45,15 @@ export default function AircraftPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-6">
-        <p className="text-base text-muted-foreground">
-          {hasAccess
-            ? 'You have access to aircraft and fleet overview tools.'
-            : 'This area is designed for fleet, maintenance and senior operations roles.'}
-        </p>
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <p className="text-base text-muted-foreground">
+            {hasAccess
+              ? 'You have access to aircraft and fleet overview tools.'
+              : 'This area is designed for fleet, maintenance and senior operations roles.'}
+          </p>
+        </div>
+        <AircraftIllustration />
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">

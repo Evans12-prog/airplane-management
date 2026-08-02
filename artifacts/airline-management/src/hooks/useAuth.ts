@@ -33,25 +33,58 @@ export interface AuthState {
   isManager: boolean;
 }
 
+const isLocalhost =
+  typeof window !== 'undefined' &&
+  ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+const isLocalDemoEnvironment = !isSupabaseConfigured || import.meta.env.DEV || isLocalhost;
+
 export function useAuth() {
+  const initialLocalSession = typeof window !== 'undefined' ? getStoredLocalSession() : null;
+  const initialAccount = initialLocalSession?.account;
+  const initialLocalProfile = initialAccount ? getLocalDemoProfile(initialAccount) : null;
+  const initialLocalUser = initialAccount
+    ? ({
+        id: initialAccount.id,
+        email: initialAccount.email,
+        app_metadata: {
+          role: initialAccount.roleName,
+          department: initialAccount.department,
+          departmentSlug: initialAccount.departmentSlug,
+          full_name: initialAccount.fullName,
+        },
+      } as any)
+    : null;
+
   const [state, setState] = useState<AuthState>({
-    user: null,
-    session: null,
-    profile: null,
-    loading: true,
-    isAdmin: false,
-    isManager: false,
+    user: initialLocalUser,
+    session: initialLocalUser
+      ? ({ access_token: `local-${initialAccount.id}-token`, user: initialLocalUser } as any)
+      : null,
+    profile: initialLocalProfile,
+    loading: !initialLocalUser,
+    isAdmin: ['admin', 'super_admin'].includes(initialAccount?.roleName || ''),
+    isManager: [
+      'admin',
+      'super_admin',
+      'airline_manager',
+      'hr_manager',
+      'operations_manager',
+      'crew_manager',
+      'fleet_manager',
+      'route_planner',
+    ].includes(initialAccount?.roleName || ''),
   });
 
   const loadProfile = useCallback(async (userId: string, email: string, userMetadata?: User | null) => {
-    const metadataProfile = mergeProfileWithUserMetadata(null, userMetadata);
+    const metadataProfile = mergeProfileWithUserMetadata(null, userMetadata as any);
 
     try {
       const profile = (await getProfile(userId)) as Profile;
       const roleName = profile?.roles?.name || metadataProfile?.roles?.name || null;
       setState((prev) => ({
         ...prev,
-        profile: profile || metadataProfile,
+        profile: (profile || metadataProfile) as Profile | null,
         isAdmin: ['admin', 'super_admin'].includes(roleName || ''),
         isManager: ['admin', 'super_admin', 'manager'].includes(roleName || ''),
       }));
@@ -64,7 +97,7 @@ export function useAuth() {
         const fallbackRoleName = mergedProfile?.roles?.name || null;
         setState((prev) => ({
           ...prev,
-          profile: mergedProfile,
+          profile: mergedProfile as Profile | null,
           isAdmin: ['admin', 'super_admin'].includes(fallbackRoleName || ''),
           isManager: ['admin', 'super_admin', 'manager'].includes(fallbackRoleName || ''),
         }));
@@ -72,7 +105,7 @@ export function useAuth() {
         const fallbackRoleName = metadataProfile?.roles?.name || null;
         setState((prev) => ({
           ...prev,
-          profile: metadataProfile,
+          profile: metadataProfile as Profile | null,
           isAdmin: ['admin', 'super_admin'].includes(fallbackRoleName || ''),
           isManager: ['admin', 'super_admin', 'manager'].includes(fallbackRoleName || ''),
         }));
@@ -81,45 +114,54 @@ export function useAuth() {
   }, []);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      const syncLocalSession = () => {
-        const savedSession = getStoredLocalSession();
-        const account = savedSession?.account;
+    const syncLocalSession = () => {
+      const savedSession = getStoredLocalSession();
+      const account = savedSession?.account;
 
-        if (account) {
-          const localProfile = getLocalDemoProfile(account);
-          const localUser = {
-            id: account.id,
-            email: account.email,
-            app_metadata: {
-              role: account.roleName,
-              department: account.department,
-              departmentSlug: account.departmentSlug,
-              full_name: account.fullName,
-            },
-          } as any;
+      if (account) {
+        const localProfile = getLocalDemoProfile(account);
+        const localUser = {
+          id: account.id,
+          email: account.email,
+          app_metadata: {
+            role: account.roleName,
+            department: account.department,
+            departmentSlug: account.departmentSlug,
+            full_name: account.fullName,
+          },
+        } as any;
 
-          setState((prev) => ({
-            ...prev,
-            session: { access_token: `local-${account.id}-token`, user: localUser } as any,
-            user: localUser,
-            profile: localProfile,
-            isAdmin: ['admin', 'super_admin'].includes(account.roleName || ''),
-            isManager: [
-              'admin',
-              'super_admin',
-              'airline_manager',
-              'hr_manager',
-              'operations_manager',
-              'crew_manager',
-              'fleet_manager',
-              'route_planner',
-            ].includes(account.roleName || ''),
-            loading: false,
-          }));
-          return;
-        }
+        setState((prev) => ({
+          ...prev,
+          session: { access_token: `local-${account.id}-token`, user: localUser } as any,
+          user: localUser,
+          profile: localProfile,
+          isAdmin: ['admin', 'super_admin'].includes(account.roleName || ''),
+          isManager: [
+            'admin',
+            'super_admin',
+            'airline_manager',
+            'hr_manager',
+            'operations_manager',
+            'crew_manager',
+            'fleet_manager',
+            'route_planner',
+          ].includes(account.roleName || ''),
+          loading: false,
+        }));
+        return true;
+      }
 
+      return false;
+    };
+
+    const trySyncLocalSessionFirst = () => {
+      const hadLocalSession = syncLocalSession();
+      if (hadLocalSession) {
+        return true;
+      }
+
+      if (!isSupabaseConfigured) {
         setState((prev) => ({
           ...prev,
           session: null,
@@ -129,11 +171,16 @@ export function useAuth() {
           isManager: false,
           loading: false,
         }));
-      };
+      }
 
-      syncLocalSession();
-      window.addEventListener(AUTH_STATE_EVENT, syncLocalSession);
-      window.addEventListener('storage', syncLocalSession);
+      return false;
+    };
+
+    window.addEventListener(AUTH_STATE_EVENT, syncLocalSession);
+    window.addEventListener('storage', syncLocalSession);
+
+    if (!isSupabaseConfigured) {
+      trySyncLocalSessionFirst();
 
       return () => {
         window.removeEventListener(AUTH_STATE_EVENT, syncLocalSession);
@@ -142,17 +189,35 @@ export function useAuth() {
     }
 
     const initializeAuth = async () => {
+      const hadLocalSession = trySyncLocalSessionFirst();
+      if (hadLocalSession) {
+        return;
+      }
+
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const sessionPromise = Promise.race([
+          supabase.auth.getSession(),
+          new Promise<{ data: { session: Session | null } }>((resolve) => {
+            const timeout = window.setTimeout(() => resolve({ data: { session: null } }), 1500);
+            return () => window.clearTimeout(timeout);
+          }),
+        ]);
+
+        const { data: { session } } = await sessionPromise;
         setState((prev) => ({
           ...prev,
           session,
           user: session?.user ?? null,
+        }));
+
+        if (session?.user) {
+          await loadProfile(session.user.id, session.user.email || '', session.user);
+        }
+
+        setState((prev) => ({
+          ...prev,
           loading: false,
         }));
-        if (session?.user) {
-          void loadProfile(session.user.id, session.user.email || '', session.user);
-        }
       } catch {
         setState((prev) => ({
           ...prev,
@@ -174,10 +239,14 @@ export function useAuth() {
           ...prev,
           session,
           user: session?.user ?? null,
-          loading: false,
         }));
+
         if (session?.user) {
-          void loadProfile(session.user.id, session.user.email || '', session.user);
+          await loadProfile(session.user.id, session.user.email || '', session.user);
+          setState((prev) => ({
+            ...prev,
+            loading: false,
+          }));
         } else {
           setState((prev) => ({
             ...prev,
@@ -190,7 +259,11 @@ export function useAuth() {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener(AUTH_STATE_EVENT, syncLocalSession);
+      window.removeEventListener('storage', syncLocalSession);
+    };
   }, [loadProfile]);
 
   return state;

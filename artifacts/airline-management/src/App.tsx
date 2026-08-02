@@ -21,6 +21,7 @@ import EmployeeFormPage from '@/pages/employees/EmployeeFormPage';
 import AnalyticsPage from '@/pages/analytics/AnalyticsPage';
 import NotificationsPage from '@/pages/notifications/NotificationsPage';
 import SettingsPage from '@/pages/settings/SettingsPage';
+import RolePermissionsPage from '@/pages/settings/RolePermissionsPage';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient({
@@ -44,6 +45,7 @@ function Router() {
               <Switch>
                 <Route path="/" component={DashboardPage} />
                 <Route path="/department/:slug" component={DepartmentPage} />
+                <Route path="/dashboard" component={DashboardPage} />
                 <Route path="/flights" component={FlightsPage} />
                 <Route path="/flights/new" component={NewFlightPage} />
                 <Route path="/flights/edit/:id" component={NewFlightPage} />
@@ -58,6 +60,7 @@ function Router() {
                 <Route path="/logs" component={SystemLogsPage} />
                 <Route path="/notifications" component={NotificationsPage} />
                 <Route path="/settings" component={SettingsPage} />
+                <Route path="/roles" component={RolePermissionsPage} />
                 <Route component={NotFound} />
               </Switch>
             </AppLayout>

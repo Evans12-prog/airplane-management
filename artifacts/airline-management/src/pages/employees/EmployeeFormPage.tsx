@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useEmployees } from '@/hooks/useEmployees';
-import { supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 import { toast } from 'sonner';
 
@@ -21,6 +21,37 @@ type Department = Database['public']['Tables']['departments']['Row'];
 type Role = Database['public']['Tables']['roles']['Row'];
 
 type EmployeeFormValues = z.infer<typeof employeeSchema>;
+
+const LOCAL_EMPLOYEES_STORAGE_KEY = 'skyair-local-employees';
+
+const fallbackDepartments: Department[] = [
+  { id: 'dept-ops', name: 'Flight Operations', description: null, manager_id: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'dept-maint', name: 'Maintenance', description: null, manager_id: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'dept-crew', name: 'Crew Management', description: null, manager_id: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'dept-admin', name: 'Administration', description: null, manager_id: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'dept-hr', name: 'Human Resources', description: null, manager_id: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+] as Department[];
+
+const fallbackRoles: Role[] = [
+  { id: 'role-captain', name: 'Captain', description: null, permissions: {}, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'role-first-officer', name: 'First Officer', description: null, permissions: {}, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'role-maintenance', name: 'Maintenance Supervisor', description: null, permissions: {}, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'role-hr', name: 'HR Manager', description: null, permissions: {}, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'role-employee', name: 'Employee', description: null, permissions: {}, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+] as Role[];
+
+function getStoredLocalEmployees() {
+  if (typeof window === 'undefined') {
+    return [] as Array<Record<string, unknown>>;
+  }
+
+  try {
+    const value = window.localStorage.getItem(LOCAL_EMPLOYEES_STORAGE_KEY);
+    return value ? (JSON.parse(value) as Array<Record<string, unknown>>) : [];
+  } catch {
+    return [] as Array<Record<string, unknown>>;
+  }
+}
 
 const employeeSchema = z.object({
   employee_number: z.string().min(3, 'Employee number is required').max(32),
@@ -80,13 +111,43 @@ export default function EmployeeFormPage() {
 
   useEffect(() => {
     const fetchFormData = async () => {
+      if (!isSupabaseConfigured) {
+        setDepartments(fallbackDepartments);
+        setRoles(fallbackRoles);
+
+        if (isEditing && employeeId) {
+          const storedEmployee = getStoredLocalEmployees().find((employee) => employee.id === employeeId);
+          if (storedEmployee) {
+            form.reset({
+              employee_number: String(storedEmployee.employee_number || ''),
+              full_name: String(storedEmployee.full_name || ''),
+              email: String(storedEmployee.email || ''),
+              phone: String(storedEmployee.phone || ''),
+              department_id: String(storedEmployee.department_id || ''),
+              role_id: String(storedEmployee.role_id || ''),
+              job_title: String(storedEmployee.job_title || ''),
+              employment_type: (storedEmployee.employment_type as EmployeeFormValues['employment_type']) || 'full_time',
+              status: (storedEmployee.status as EmployeeFormValues['status']) || 'active',
+              hire_date: String(storedEmployee.hire_date || new Date().toISOString().slice(0, 10)),
+              salary: Number(storedEmployee.salary ?? 0),
+              address: String(storedEmployee.address || ''),
+              emergency_contact: typeof storedEmployee.emergency_contact === 'string' ? storedEmployee.emergency_contact : JSON.stringify(storedEmployee.emergency_contact ?? '', null, 2),
+              notes: String(storedEmployee.notes || ''),
+            });
+          }
+        }
+
+        setLoading(false);
+        return;
+      }
+
       const [departmentsRes, rolesRes] = await Promise.all([
         supabase.from('departments').select('*').order('name', { ascending: true }),
         supabase.from('roles').select('*').order('name', { ascending: true }),
       ]);
 
-      setDepartments(departmentsRes.data || []);
-      setRoles(rolesRes.data || []);
+      setDepartments((departmentsRes.data as Department[] | null) || []);
+      setRoles((rolesRes.data as Role[] | null) || []);
 
       if (isEditing && employeeId) {
         const { data: employee, error } = await (supabase.from('employees') as any)

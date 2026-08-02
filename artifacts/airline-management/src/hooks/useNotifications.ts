@@ -16,6 +16,7 @@ export function useNotifications(userId: string | null | undefined) {
     }
 
     let channel: any;
+    const channelName = `notifications-${userId}-${Math.random().toString(36).slice(2)}`;
 
     const loadNotifications = async () => {
       if (!isSupabaseConfigured) {
@@ -49,7 +50,7 @@ export function useNotifications(userId: string | null | undefined) {
       }
       setLoading(false);
 
-      const rawChannel = supabase.channel(`notifications-${userId}`) as any;
+      const rawChannel = supabase.channel(channelName) as any;
       channel = rawChannel
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, (payload: { new: Notification }) => {
           setNotifications((prev) => {
@@ -65,6 +66,7 @@ export function useNotifications(userId: string | null | undefined) {
 
     return () => {
       if (channel) {
+        channel.unsubscribe?.();
         supabase.removeChannel(channel);
       }
     };

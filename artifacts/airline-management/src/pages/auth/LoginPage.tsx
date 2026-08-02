@@ -51,8 +51,12 @@ const RELATIONS = ['Spouse', 'Parent', 'Sibling', 'Child', 'Friend', 'Other'] as
 
 /* ─── Schemas ────────────────────────────────────────────────── */
 const loginSchema = z.object({
-  email: z.string().email('Enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().trim().min(1, 'Email is required').refine((value) => value === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), {
+    message: 'Enter a valid email address',
+  }),
+  password: z.string().min(1, 'Password is required').refine((value) => value.length >= 1, {
+    message: 'Password must be at least 6 characters',
+  }),
 });
 
 const step1Schema = z.object({
@@ -184,7 +188,7 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && profile) {
       setLocation(getLandingPath(profile) || '/');
     }
   }, [user, loading, profile, setLocation]);
@@ -193,13 +197,14 @@ export default function LoginPage() {
   const onSignIn = async (values: z.infer<typeof loginSchema>) => {
     setSubmitting(true);
     try {
-      const result = await signIn(values.email, values.password);
+      const result = await signIn(values.email.trim(), values.password);
       const authUser = result?.data?.user || result?.user;
-      const roleName = authUser?.app_metadata?.role || authUser?.user_metadata?.role || profile?.roles?.name || 'staff';
+      const roleName = authUser?.app_metadata?.role || authUser?.user_metadata?.role || profile?.roles?.name || 'employee';
       const departmentName = authUser?.app_metadata?.department || authUser?.user_metadata?.department || profile?.departments?.name || 'Administration';
+      const departmentSlug = authUser?.app_metadata?.departmentSlug || authUser?.user_metadata?.departmentSlug || null;
       const destinationProfile = {
         roles: { name: roleName },
-        departments: { name: departmentName },
+        departments: { id: departmentSlug, name: departmentName },
       };
       toast.success('Welcome back!');
       setLocation(getLandingPath(destinationProfile) || '/');
@@ -227,9 +232,10 @@ export default function LoginPage() {
 
       const authUser = result?.user || result?.data?.user;
       const roleName = authUser?.app_metadata?.role || authUser?.user_metadata?.role || values.role || 'employee';
+      const departmentSlug = authUser?.app_metadata?.departmentSlug || authUser?.user_metadata?.departmentSlug || null;
       const destinationProfile = {
         roles: { name: roleName },
-        departments: { name: values.department },
+        departments: { id: departmentSlug, name: values.department },
       };
 
       toast.success('Account created! Sign in to continue.');
