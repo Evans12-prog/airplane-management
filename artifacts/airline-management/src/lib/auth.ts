@@ -941,10 +941,6 @@ export async function signUp(regData: RegistrationData) {
   if (error) throw error;
 
   const user = signUpData?.user ?? null;
-  if (user && !user.identities?.length) {
-    throw new Error('An account with this email already exists. Please sign in.');
-  }
-
   if (!user) {
     return signUpData;
   }

@@ -34,13 +34,28 @@ RETURNS BOOLEAN AS $$
   SELECT EXISTS (
     SELECT 1 FROM profiles p
     JOIN roles r ON p.role_id = r.id
-    WHERE p.id = auth.uid() AND r.name IN ('admin', 'super_admin', 'manager')
+    WHERE p.id = auth.uid() AND r.name IN (
+      'admin',
+      'super_admin',
+      'manager',
+      'airline_manager',
+      'hr_manager',
+      'operations_manager',
+      'crew_manager',
+      'fleet_manager',
+      'route_planner',
+      'maintenance_officer',
+      'finance_officer',
+      'customer_service_officer',
+      'security_officer'
+    )
   );
 $$ LANGUAGE sql SECURITY DEFINER;
 
 -- PROFILES
 CREATE POLICY "Users can view all profiles" ON profiles FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Users can update their own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can insert their own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "Admins can insert profiles" ON profiles FOR INSERT WITH CHECK (is_admin());
 CREATE POLICY "Admins can delete profiles" ON profiles FOR DELETE USING (is_admin());
 
@@ -55,6 +70,7 @@ CREATE POLICY "Admins can manage departments" ON departments FOR ALL USING (is_a
 -- EMPLOYEES
 CREATE POLICY "Authenticated users can view employees" ON employees FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Managers can insert employees" ON employees FOR INSERT WITH CHECK (is_manager());
+CREATE POLICY "Users can insert their own employee record" ON employees FOR INSERT WITH CHECK (profile_id = auth.uid());
 CREATE POLICY "Managers can update employees" ON employees FOR UPDATE USING (is_manager());
 CREATE POLICY "Admins can delete employees" ON employees FOR DELETE USING (is_admin());
 
