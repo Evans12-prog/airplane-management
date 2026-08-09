@@ -238,7 +238,13 @@ export default function LoginPage() {
         departments: { id: departmentSlug, name: values.department },
       };
 
-      toast.success('Account created! Sign in to continue.');
+      const isEmailConfirmationRequired = !result?.data?.session?.user;
+      if (isEmailConfirmationRequired) {
+        toast.success('Account created! Please confirm your email before signing in.');
+      } else {
+        toast.success('Account created! Sign in to continue.');
+      }
+
       step1Form.reset();
       step2Form.reset();
       setRegStep(1);

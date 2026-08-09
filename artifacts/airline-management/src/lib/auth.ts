@@ -953,10 +953,15 @@ export async function signUp(regData: RegistrationData) {
 
   // 1. Create Supabase auth user — store all extra fields in user_metadata
   const roleName = regData.role || 'employee';
+  const emailRedirectTo = typeof window !== 'undefined'
+    ? `${window.location.origin}/login`
+    : undefined;
+
   const signUpResult = await supabase.auth.signUp({
     email: regData.email,
     password: regData.password,
     options: {
+      emailRedirectTo,
       data: {
         full_name: regData.fullName,
         employee_id: regData.employeeId,
