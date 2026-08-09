@@ -952,10 +952,10 @@ export async function signUp(regData: RegistrationData) {
   }
 
   // 1. Create Supabase auth user — store all extra fields in user_metadata
+  const appUrl = (import.meta.env.VITE_APP_URL ?? '').trim() || (typeof window !== 'undefined' ? window.location.origin : '');
+  const normalizedAppUrl = appUrl.replace(/\/$/, '');
+  const emailRedirectTo = normalizedAppUrl ? `${normalizedAppUrl}/login` : undefined;
   const roleName = regData.role || 'employee';
-  const emailRedirectTo = typeof window !== 'undefined'
-    ? `${window.location.origin}/login`
-    : undefined;
 
   const signUpResult = await supabase.auth.signUp({
     email: regData.email,
@@ -1067,8 +1067,11 @@ export async function resetPassword(email: string) {
     return;
   }
 
+  const appUrl = (import.meta.env.VITE_APP_URL ?? '').trim() || (typeof window !== 'undefined' ? window.location.origin : '');
+  const normalizedAppUrl = appUrl.replace(/\/$/, '');
+
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
+    redirectTo: normalizedAppUrl ? `${normalizedAppUrl}/reset-password` : `${window.location.origin}/reset-password`,
   });
   if (error) throw error;
 }

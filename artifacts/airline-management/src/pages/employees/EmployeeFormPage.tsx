@@ -59,7 +59,9 @@ const employeeSchema = z.object({
   email: z.string().email('Enter a valid email'),
   phone: z.string().optional(),
   department_id: z.string().optional(),
+  department_name: z.string().optional(),
   role_id: z.string().optional(),
+  role_name: z.string().optional(),
   job_title: z.string().min(3, 'Job title is required'),
   employment_type: z.enum(['full_time', 'part_time', 'contract', 'intern']).default('full_time'),
   status: z.enum(['active', 'suspended', 'terminated', 'on_leave']).default('active'),
@@ -97,7 +99,9 @@ export default function EmployeeFormPage() {
       email: '',
       phone: '',
       department_id: '',
+      department_name: '',
       role_id: '',
+      role_name: '',
       job_title: '',
       employment_type: 'full_time',
       status: 'active',
@@ -124,7 +128,9 @@ export default function EmployeeFormPage() {
               email: String(storedEmployee.email || ''),
               phone: String(storedEmployee.phone || ''),
               department_id: String(storedEmployee.department_id || ''),
+              department_name: '',
               role_id: String(storedEmployee.role_id || ''),
+              role_name: '',
               job_title: String(storedEmployee.job_title || ''),
               employment_type: (storedEmployee.employment_type as EmployeeFormValues['employment_type']) || 'full_time',
               status: (storedEmployee.status as EmployeeFormValues['status']) || 'active',
@@ -168,7 +174,9 @@ export default function EmployeeFormPage() {
             email: employee.email,
             phone: employee.phone || '',
             department_id: employee.department_id || '',
+            department_name: '',
             role_id: employee.role_id || '',
+            role_name: '',
             job_title: employee.job_title,
             employment_type: employee.employment_type,
             status: employee.status,
@@ -194,13 +202,72 @@ export default function EmployeeFormPage() {
     setIsSubmitting(true);
 
     try {
+      const resolveDepartment = async (name?: string) => {
+        if (!name?.trim()) return null;
+        const normalized = name.trim();
+        const { data: existing, error: selectError } = await (supabase.from('departments') as any)
+          .select('id')
+          .ilike('name', normalized)
+          .limit(1)
+          .single();
+
+        if (selectError && selectError.code !== 'PGRST116') {
+          throw selectError;
+        }
+
+        if (existing?.id) return existing.id;
+
+        const { data: inserted, error: insertError } = await (supabase.from('departments') as any)
+          .insert({
+            name: normalized,
+            description: null,
+            manager_id: null,
+          })
+          .select('id')
+          .single();
+
+        if (insertError) throw insertError;
+        return inserted?.id ?? null;
+      };
+
+      const resolveRole = async (name?: string) => {
+        if (!name?.trim()) return null;
+        const normalized = name.trim();
+        const { data: existing, error: selectError } = await (supabase.from('roles') as any)
+          .select('id')
+          .ilike('name', normalized)
+          .limit(1)
+          .single();
+
+        if (selectError && selectError.code !== 'PGRST116') {
+          throw selectError;
+        }
+
+        if (existing?.id) return existing.id;
+
+        const { data: inserted, error: insertError } = await (supabase.from('roles') as any)
+          .insert({
+            name: normalized,
+            description: null,
+            permissions: {},
+          })
+          .select('id')
+          .single();
+
+        if (insertError) throw insertError;
+        return inserted?.id ?? null;
+      };
+
+      const departmentId = values.department_id || (await resolveDepartment(values.department_name));
+      const roleId = values.role_id || (await resolveRole(values.role_name));
+
       const payload: Database['public']['Tables']['employees']['Insert'] = {
         employee_number: values.employee_number,
         full_name: values.full_name,
         email: values.email,
         phone: values.phone || null,
-        department_id: values.department_id || null,
-        role_id: values.role_id || null,
+        department_id: departmentId || null,
+        role_id: roleId || null,
         job_title: values.job_title,
         employment_type: values.employment_type,
         status: values.status,
@@ -316,7 +383,13 @@ export default function EmployeeFormPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Department</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue('department_name', '');
+                      }}
+                      value={field.value || ''}
+                    >
                       <FormControl>
                         <SelectTrigger data-testid="select-department">
                           <SelectValue placeholder="Select department" />
@@ -332,6 +405,17 @@ export default function EmployeeFormPage() {
                       </SelectContent>
                     </Select>
                     <FormMessage />
+                    <div className="mt-2">
+                      <Input
+                        placeholder="Or enter department"
+                        value={form.watch('department_name')}
+                        onChange={(event) => {
+                          form.setValue('department_name', event.target.value);
+                          field.onChange('');
+                        }}
+                        data-testid="input-department-name"
+                      />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -342,7 +426,13 @@ export default function EmployeeFormPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Role</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue('role_name', '');
+                      }}
+                      value={field.value || ''}
+                    >
                       <FormControl>
                         <SelectTrigger data-testid="select-role">
                           <SelectValue placeholder="Select role" />
@@ -358,6 +448,17 @@ export default function EmployeeFormPage() {
                       </SelectContent>
                     </Select>
                     <FormMessage />
+                    <div className="mt-2">
+                      <Input
+                        placeholder="Or enter role"
+                        value={form.watch('role_name')}
+                        onChange={(event) => {
+                          form.setValue('role_name', event.target.value);
+                          field.onChange('');
+                        }}
+                        data-testid="input-role-name"
+                      />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -384,7 +485,7 @@ export default function EmployeeFormPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Employment Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || 'full_time'}>
                       <FormControl>
                         <SelectTrigger data-testid="select-employment-type">
                           <SelectValue placeholder="Select type" />
@@ -410,7 +511,7 @@ export default function EmployeeFormPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || 'active'}>
                       <FormControl>
                         <SelectTrigger data-testid="select-status">
                           <SelectValue placeholder="Select status" />

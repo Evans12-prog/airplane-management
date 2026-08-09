@@ -198,7 +198,13 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const result = await signIn(values.email.trim(), values.password);
+      const hasSession = Boolean(result?.data?.session?.user || result?.user?.session?.user);
       const authUser = result?.data?.user || result?.user;
+      if (!hasSession) {
+        toast.error('Please confirm your email before signing in.');
+        return;
+      }
+
       const roleName = authUser?.app_metadata?.role || authUser?.user_metadata?.role || profile?.roles?.name || 'employee';
       const departmentName = authUser?.app_metadata?.department || authUser?.user_metadata?.department || profile?.departments?.name || 'Administration';
       const departmentSlug = authUser?.app_metadata?.departmentSlug || authUser?.user_metadata?.departmentSlug || null;
@@ -241,10 +247,15 @@ export default function LoginPage() {
       const isEmailConfirmationRequired = !result?.data?.session?.user;
       if (isEmailConfirmationRequired) {
         toast.success('Account created! Please confirm your email before signing in.');
-      } else {
-        toast.success('Account created! Sign in to continue.');
+        step1Form.reset();
+        step2Form.reset();
+        setRegStep(1);
+        setStep1Data(null);
+        setActiveTab('signin');
+        return;
       }
 
+      toast.success('Account created! Sign in to continue.');
       step1Form.reset();
       step2Form.reset();
       setRegStep(1);

@@ -20,9 +20,12 @@ type Employee = Database['public']['Tables']['employees']['Row'];
 
 const flightSchema = z.object({
   flight_number: z.string().min(3, 'Flight number is required').max(10),
-  aircraft_id: z.string().min(1, 'Aircraft is required'),
-  route_id: z.string().min(1, 'Route is required'),
+  aircraft_id: z.string().optional(),
+  route_id: z.string().optional(),
   captain_id: z.string().optional(),
+  aircraft_name: z.string().optional(),
+  route_name: z.string().optional(),
+  captain_name: z.string().optional(),
   departure_time: z.string().min(1, 'Departure time is required'),
   arrival_time: z.string().min(1, 'Arrival time is required'),
   gate: z.string().optional(),
@@ -51,6 +54,9 @@ export default function NewFlightPage() {
       aircraft_id: '',
       route_id: '',
       captain_id: '',
+      aircraft_name: '',
+      route_name: '',
+      captain_name: '',
       departure_time: '',
       arrival_time: '',
       gate: '',
@@ -63,89 +69,179 @@ export default function NewFlightPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [aircraftRes, routesRes, captainsRes] = await Promise.all([
-        (supabase.from('aircraft') as any).select('*').eq('status', 'active'),
-        (supabase.from('routes') as any).select('*').eq('is_active', true),
-        (supabase.from('employees') as any)
-          .select('*')
-          .or('job_title.ilike.%Captain%,job_title.ilike.%Pilot%')
-          .eq('status', 'active'),
-      ]);
+      try {
+        const [aircraftRes, routesRes, captainsRes] = await Promise.all([
+          (supabase.from('aircraft') as any).select('*').eq('status', 'active'),
+          (supabase.from('routes') as any).select('*').eq('is_active', true),
+          (supabase.from('employees') as any)
+            .select('*')
+            .or('job_title.ilike.%Captain%,job_title.ilike.%Pilot%')
+            .eq('status', 'active'),
+        ]);
 
-      setAircraft((aircraftRes.data || []) as Aircraft[]);
-      setRoutes((routesRes.data || []) as Route[]);
-      setCaptains((captainsRes.data || []) as Employee[]);
+        setAircraft((aircraftRes.data || []) as Aircraft[]);
+        setRoutes((routesRes.data || []) as Route[]);
+        setCaptains((captainsRes.data || []) as Employee[]);
 
-      if (isEditing && flightId) {
-        const { data: existingFlight } = await (supabase.from('flights') as any)
-          .select('*')
-          .eq('id', flightId)
-          .single();
+        if (isEditing && flightId) {
+          const { data: existingFlight, error: flightError } = await (supabase.from('flights') as any)
+            .select('*')
+            .eq('id', flightId)
+            .single();
 
-        if (existingFlight) {
-          form.reset({
-            flight_number: existingFlight.flight_number,
-            aircraft_id: existingFlight.aircraft_id || '',
-            route_id: existingFlight.route_id || '',
-            captain_id: existingFlight.captain_id || undefined,
-            departure_time: existingFlight.departure_time?.slice(0, 16) || '',
-            arrival_time: existingFlight.arrival_time?.slice(0, 16) || '',
-            gate: existingFlight.gate || '',
-            terminal: existingFlight.terminal || '',
-            passenger_count: existingFlight.passenger_count ?? 0,
-            status: existingFlight.status,
-            notes: existingFlight.notes || '',
-          });
+          if (flightError) {
+            throw flightError;
+          }
+
+          if (existingFlight) {
+            form.reset({
+              flight_number: existingFlight.flight_number,
+              aircraft_id: existingFlight.aircraft_id || '',
+              route_id: existingFlight.route_id || '',
+              captain_id: existingFlight.captain_id || undefined,
+              departure_time: existingFlight.departure_time?.slice(0, 16) || '',
+              arrival_time: existingFlight.arrival_time?.slice(0, 16) || '',
+              gate: existingFlight.gate || '',
+              terminal: existingFlight.terminal || '',
+              passenger_count: existingFlight.passenger_count ?? 0,
+              status: existingFlight.status,
+              notes: existingFlight.notes || '',
+            });
+          }
         }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to load flight form data');
+        setAircraft([]);
+        setRoutes([]);
+        setCaptains([]);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     fetchData();
   }, [flightId, isEditing, form]);
 
+  const createOrGetAircraft = async (name?: string) => {
+    if (!name?.trim()) return null;
+    const registration = name.trim();
+    const { data, error } = await (supabase.from('aircraft') as any)
+      .insert({
+        registration,
+        model: registration,
+        manufacturer: 'Custom',
+        capacity: 0,
+        fuel_capacity_liters: 0,
+        status: 'active',
+        total_flight_hours: 0,
+        year_manufactured: new Date().getFullYear(),
+      })
+      .select('id')
+      .single();
+    if (error) throw error;
+    return data?.id ?? null;
+  };
+
+  const createOrGetRoute = async (name?: string) => {
+    if (!name?.trim()) return null;
+    const routeLabel = name.trim();
+    const [originCode, destinationCode] = routeLabel.split(/\s*→\s*|\s*-\s*|\s*to\s*/i);
+    const origin = originCode?.trim() || routeLabel;
+    const destination = destinationCode?.trim() || routeLabel;
+    const { data, error } = await (supabase.from('routes') as any)
+      .insert({
+        origin_code: origin,
+        origin_city: origin,
+        destination_code: destination,
+        destination_city: destination,
+        distance_km: 0,
+        estimated_duration_minutes: 0,
+        is_active: true,
+      })
+      .select('id')
+      .single();
+    if (error) throw error;
+    return data?.id ?? null;
+  };
+
+  const createOrGetCaptain = async (name?: string) => {
+    if (!name?.trim()) return null;
+    const fullName = name.trim();
+    const employeeNumber = `EMP-${Date.now().toString().slice(-6)}`;
+    const email = `${fullName.replace(/\s+/g, '.').toLowerCase()}@skyair.local`;
+    const { data, error } = await (supabase.from('employees') as any)
+      .insert({
+        employee_number: employeeNumber,
+        full_name: fullName,
+        email,
+        phone: null,
+        department_id: null,
+        role_id: null,
+        job_title: 'Captain',
+        employment_type: 'full_time',
+        status: 'active',
+        hire_date: new Date().toISOString().split('T')[0],
+        certifications: [],
+      })
+      .select('id')
+      .single();
+    if (error) throw error;
+    return data?.id ?? null;
+  };
+
   const onSubmit = async (values: z.infer<typeof flightSchema>) => {
     setIsSubmitting(true);
     try {
+      let aircraftId = values.aircraft_id || null;
+      let routeId = values.route_id || null;
+      let captainId = values.captain_id || null;
+
+      if (!aircraftId && values.aircraft_name) {
+        aircraftId = await createOrGetAircraft(values.aircraft_name);
+      }
+      if (!routeId && values.route_name) {
+        routeId = await createOrGetRoute(values.route_name);
+      }
+      if (!captainId && values.captain_name) {
+        captainId = await createOrGetCaptain(values.captain_name);
+      }
+
+      if (!aircraftId) {
+        throw new Error('Aircraft is required');
+      }
+      if (!routeId) {
+        throw new Error('Route is required');
+      }
+
+      const payload = {
+        flight_number: values.flight_number,
+        aircraft_id: aircraftId,
+        route_id: routeId,
+        captain_id: captainId,
+        departure_time: values.departure_time,
+        arrival_time: values.arrival_time,
+        gate: values.gate || null,
+        terminal: values.terminal || null,
+        passenger_count: values.passenger_count,
+        status: values.status,
+        notes: values.notes || null,
+        delay_minutes: 0,
+        actual_departure: null,
+        actual_arrival: null,
+        delay_reason: null,
+        cancellation_reason: null,
+        fuel_used_liters: null,
+        available_seats: null,
+      } as Database['public']['Tables']['flights']['Insert'];
+
       if (isEditing && flightId) {
-        await updateFlight(flightId, {
-          flight_number: values.flight_number,
-          aircraft_id: values.aircraft_id,
-          route_id: values.route_id,
-          captain_id: values.captain_id || null,
-          departure_time: values.departure_time,
-          arrival_time: values.arrival_time,
-          gate: values.gate || null,
-          terminal: values.terminal || null,
-          passenger_count: values.passenger_count,
-          status: values.status,
-          notes: values.notes || null,
-        });
+        await updateFlight(flightId, payload);
         toast.success('Flight updated successfully');
       } else {
-        await createFlight({
-          flight_number: values.flight_number,
-          aircraft_id: values.aircraft_id,
-          route_id: values.route_id,
-          captain_id: values.captain_id || null,
-          departure_time: values.departure_time,
-          arrival_time: values.arrival_time,
-          gate: values.gate || null,
-          terminal: values.terminal || null,
-          passenger_count: values.passenger_count,
-          status: values.status,
-          notes: values.notes || null,
-          delay_minutes: 0,
-          actual_departure: null,
-          actual_arrival: null,
-          delay_reason: null,
-          cancellation_reason: null,
-          fuel_used_liters: null,
-          available_seats: null,
-        });
+        await createFlight(payload);
         toast.success('Flight created successfully');
       }
+
       setLocation('/flights');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save flight');
@@ -195,7 +291,7 @@ export default function NewFlightPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || 'scheduled'}>
                       <FormControl>
                         <SelectTrigger data-testid="select-status">
                           <SelectValue placeholder="Select status" />
@@ -221,13 +317,20 @@ export default function NewFlightPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Aircraft</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue('aircraft_name', '');
+                      }}
+                      value={field.value || ''}
+                    >
                       <FormControl>
                         <SelectTrigger data-testid="select-aircraft">
                           <SelectValue placeholder="Select aircraft" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="">None</SelectItem>
                         {aircraft.map((a) => (
                           <SelectItem key={a.id} value={a.id}>
                             {a.registration} - {a.model}
@@ -236,6 +339,17 @@ export default function NewFlightPage() {
                       </SelectContent>
                     </Select>
                     <FormMessage />
+                    <div className="mt-2">
+                      <Input
+                        placeholder="Or enter aircraft registration"
+                        value={form.watch('aircraft_name')}
+                        onChange={(event) => {
+                          form.setValue('aircraft_name', event.target.value);
+                          field.onChange('');
+                        }}
+                        data-testid="input-aircraft-name"
+                      />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -246,13 +360,20 @@ export default function NewFlightPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Route</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue('route_name', '');
+                      }}
+                      value={field.value || ''}
+                    >
                       <FormControl>
                         <SelectTrigger data-testid="select-route">
                           <SelectValue placeholder="Select route" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="">None</SelectItem>
                         {routes.map((r) => (
                           <SelectItem key={r.id} value={r.id}>
                             {r.origin_code} → {r.destination_code} ({r.origin_city} to {r.destination_city})
@@ -261,6 +382,17 @@ export default function NewFlightPage() {
                       </SelectContent>
                     </Select>
                     <FormMessage />
+                    <div className="mt-2">
+                      <Input
+                        placeholder="Or enter route (e.g. JHB → CPT)"
+                        value={form.watch('route_name')}
+                        onChange={(event) => {
+                          form.setValue('route_name', event.target.value);
+                          field.onChange('');
+                        }}
+                        data-testid="input-route-name"
+                      />
+                    </div>
                   </FormItem>
                 )}
               />
@@ -271,13 +403,20 @@ export default function NewFlightPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Captain (Optional)</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue('captain_name', '');
+                      }}
+                      value={field.value || ''}
+                    >
                       <FormControl>
                         <SelectTrigger data-testid="select-captain">
                           <SelectValue placeholder="Select captain" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="">None</SelectItem>
                         {captains.map((c) => (
                           <SelectItem key={c.id} value={c.id}>
                             {c.full_name} - {c.job_title}
@@ -286,6 +425,17 @@ export default function NewFlightPage() {
                       </SelectContent>
                     </Select>
                     <FormMessage />
+                    <div className="mt-2">
+                      <Input
+                        placeholder="Or enter captain name"
+                        value={form.watch('captain_name')}
+                        onChange={(event) => {
+                          form.setValue('captain_name', event.target.value);
+                          field.onChange('');
+                        }}
+                        data-testid="input-captain-name"
+                      />
+                    </div>
                   </FormItem>
                 )}
               />

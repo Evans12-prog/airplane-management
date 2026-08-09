@@ -160,10 +160,10 @@ export function useFlights(filters?: {
   }, [filters?.status, filters?.search]);
 
   const createFlight = async (flight: Database['public']['Tables']['flights']['Insert']) => {
-    const { data, error } = await (supabase.from('flights') as any).insert(flight).select().single();
+    const { error } = await (supabase.from('flights') as any).insert(flight);
     if (error) throw error;
     await fetchFlights();
-    return data;
+    return null;
   };
 
   const updateFlight = async (id: string, updates: Database['public']['Tables']['flights']['Update']) => {
