@@ -952,10 +952,16 @@ export async function signUp(regData: RegistrationData) {
   }
 
   // 1. Create Supabase auth user — store all extra fields in user_metadata
-  const appUrl = (import.meta.env.VITE_APP_URL ?? '').trim() || (typeof window !== 'undefined' ? window.location.origin : '');
+  const configuredAppUrl = (import.meta.env.VITE_APP_URL ?? '').trim();
+  const browserOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const appUrl = configuredAppUrl || browserOrigin;
   const normalizedAppUrl = appUrl.replace(/\/$/, '');
-  const emailRedirectTo = normalizedAppUrl ? `${normalizedAppUrl}/login` : undefined;
+  const emailRedirectTo = `${normalizedAppUrl}/login`;
   const roleName = regData.role || 'employee';
+  const departmentSlug = getDepartmentSlug({
+    roles: { name: roleName },
+    departments: { name: regData.department },
+  });
 
   const signUpResult = await supabase.auth.signUp({
     email: regData.email,
@@ -968,6 +974,7 @@ export async function signUp(regData: RegistrationData) {
         phone: regData.phone,
         role: roleName,
         department: regData.department,
+        departmentSlug,
         job_role: regData.jobRole,
         gender: regData.gender,
         date_of_birth: regData.dateOfBirth,

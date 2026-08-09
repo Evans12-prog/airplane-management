@@ -125,6 +125,12 @@ export default function NewFlightPage() {
   const createOrGetAircraft = async (name?: string) => {
     if (!name?.trim()) return null;
     const registration = name.trim();
+    const { data: existing } = await (supabase.from('aircraft') as any)
+      .select('id')
+      .eq('registration', registration)
+      .single();
+    if (existing?.id) return existing.id;
+
     const { data, error } = await (supabase.from('aircraft') as any)
       .insert({
         registration,
@@ -148,6 +154,14 @@ export default function NewFlightPage() {
     const [originCode, destinationCode] = routeLabel.split(/\s*→\s*|\s*-\s*|\s*to\s*/i);
     const origin = originCode?.trim() || routeLabel;
     const destination = destinationCode?.trim() || routeLabel;
+
+    const { data: existing } = await (supabase.from('routes') as any)
+      .select('id')
+      .eq('origin_code', origin)
+      .eq('destination_code', destination)
+      .single();
+    if (existing?.id) return existing.id;
+
     const { data, error } = await (supabase.from('routes') as any)
       .insert({
         origin_code: origin,
@@ -167,8 +181,16 @@ export default function NewFlightPage() {
   const createOrGetCaptain = async (name?: string) => {
     if (!name?.trim()) return null;
     const fullName = name.trim();
-    const employeeNumber = `EMP-${Date.now().toString().slice(-6)}`;
     const email = `${fullName.replace(/\s+/g, '.').toLowerCase()}@skyair.local`;
+    const { data: existing } = await (supabase.from('employees') as any)
+      .select('id')
+      .ilike('full_name', fullName)
+      .or(`email.eq.${email}`)
+      .limit(1)
+      .single();
+    if (existing?.id) return existing.id;
+
+    const employeeNumber = `EMP-${Date.now().toString().slice(-6)}`;
     const { data, error } = await (supabase.from('employees') as any)
       .insert({
         employee_number: employeeNumber,
