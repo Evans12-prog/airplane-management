@@ -340,6 +340,44 @@ async function ensureDepartmentRecord(departmentName: string) {
   return insertedDepartment.id;
 }
 
+async function ensureEmployeeRecord(
+  userId: string,
+  email: string,
+  metadata: Record<string, any>,
+  departmentId: string,
+  roleId: string,
+) {
+  const employeeNumber = metadata.employee_id || `EMP-${Date.now().toString().slice(-6)}`;
+  const employeeRecord = {
+    id: userId,
+    employee_number: employeeNumber,
+    profile_id: userId,
+    full_name: metadata.full_name || metadata.name || email,
+    email,
+    phone: metadata.phone || null,
+    department_id: departmentId,
+    role_id: roleId,
+    job_title: metadata.job_role || 'Employee',
+    employment_type: 'full_time',
+    status: 'active',
+    hire_date: new Date().toISOString().split('T')[0],
+    emergency_contact: metadata.emergency_contact || (
+      metadata.emergency_contact_name || metadata.emergency_contact_phone || metadata.emergency_contact_relation
+        ? {
+            name: metadata.emergency_contact_name || null,
+            phone: metadata.emergency_contact_phone || null,
+            relation: metadata.emergency_contact_relation || null,
+          }
+        : null
+    ),
+    certifications: [],
+    notes: null,
+  };
+
+  const { error } = await (supabase.from('employees') as any).upsert(employeeRecord);
+  if (error) throw error;
+}
+
 function getStoredLocalUsers(): LocalDemoAccount[] {
   if (typeof window === 'undefined') {
     return [];
@@ -936,13 +974,22 @@ export async function signUp(regData: RegistrationData) {
       },
     },
   });
-  const signUpData = signUpResult.data as { user: { id: string; email: string | null; identities?: unknown[] } | null } | null;
-  const error = signUpResult.error;
-  if (error) throw error;
+  if (signUpResult.error) {
+    throw signUpResult.error;
+  }
 
+  const signUpData = signUpResult.data;
   const user = signUpData?.user ?? null;
+  const activeSession = signUpData?.session?.user ? signUpData.session : null;
   if (!user) {
-    return signUpData;
+    return { data: signUpData, error: null } as typeof signUpResult;
+  }
+
+  if (!activeSession) {
+    // When email confirmation is required, Supabase may create the auth user
+    // but not sign them in yet. In that case, skip profile/employee creation
+    // until the user logs in with a real session.
+    return { data: signUpData, error: null } as typeof signUpResult;
   }
 
   // 2. Ensure department and role records exist
@@ -981,7 +1028,7 @@ export async function signUp(regData: RegistrationData) {
     },
   });
 
-  return signUpData;
+  return { data: signUpData, error: null } as typeof signUpResult;
 }
 
 export async function signOut() {
@@ -998,9 +1045,9 @@ export async function signOut() {
         const timeout = (typeof window !== 'undefined' ? window.setTimeout : globalThis.setTimeout)(() => resolve({ error: null }), 1200);
         return () => {
           if (typeof window !== 'undefined') {
-            window.clearTimeout(timeout as number);
+            window.clearTimeout(timeout as unknown as number);
           } else {
-            globalThis.clearTimeout(timeout as number);
+            globalThis.clearTimeout(timeout as unknown as number);
           }
         };
       }),
@@ -1048,7 +1095,7 @@ export async function createProfile(userId: string, email: string, fullName?: st
   const roleId = await ensureRoleRecord(roleName);
   const departmentId = await ensureDepartmentRecord(departmentName);
 
-  const { error } = await (supabase.from('profiles') as any).upsert({
+  const { error: profileError } = await (supabase.from('profiles') as any).upsert({
     id: userId,
     email,
     full_name: fullName || metadata.full_name || null,
@@ -1056,5 +1103,12 @@ export async function createProfile(userId: string, email: string, fullName?: st
     department_id: departmentId,
     phone: metadata.phone || null,
   });
-  if (error) throw error;
+
+  if (profileError) throw profileError;
+
+  try {
+    await ensureEmployeeRecord(userId, email, metadata as Record<string, any>, departmentId, roleId);
+  } catch (employeeError) {
+    console.warn('Unable to create employee record during profile creation:', employeeError);
+  }
 }
