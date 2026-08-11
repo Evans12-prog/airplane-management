@@ -21,15 +21,15 @@ export default function FlightsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { profile } = useAuthContext();
+  const { profile, loading: authLoading } = useAuthContext();
 
   useEffect(() => {
-    if (!canAccessFlights(profile)) {
+    if (!authLoading && !canAccessFlights(profile)) {
       setLocation('/');
     }
-  }, [profile, setLocation]);
+  }, [profile, authLoading, setLocation]);
 
-  const { flights, loading, deleteFlight, updateFlight } = useFlights({
+  const { flights, loading: flightsLoading, deleteFlight, updateFlight } = useFlights({
     status: statusFilter,
     search: searchQuery,
   });
@@ -136,7 +136,7 @@ export default function FlightsPage() {
       </div>
 
       {/* Table */}
-      {loading ? (
+      {flightsLoading ? (
         <TableSkeleton rows={10} />
       ) : filteredFlights.length === 0 ? (
         <EmptyState

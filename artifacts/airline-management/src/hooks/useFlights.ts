@@ -83,6 +83,71 @@ const fallbackFlights = [
   },
 ] as unknown as Flight[];
 
+const LOCAL_FLIGHTS_STORAGE_KEY = 'skyair-local-flights';
+
+function getStoredLocalFlights(): Flight[] {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const value = window.localStorage.getItem(LOCAL_FLIGHTS_STORAGE_KEY);
+    return value ? (JSON.parse(value) as Flight[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStoredLocalFlights(flights: Flight[]) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(LOCAL_FLIGHTS_STORAGE_KEY, JSON.stringify(flights));
+}
+
+function getLocalFlights(): Flight[] {
+  const persisted = getStoredLocalFlights();
+  const merged = [...fallbackFlights, ...persisted];
+  const uniqueById = new Map<string, Flight>();
+
+  merged.forEach((flight) => {
+    if (flight.id) {
+      uniqueById.set(flight.id, flight);
+    }
+  });
+
+  return Array.from(uniqueById.values());
+}
+
+function buildLocalFlight(flight: Database['public']['Tables']['flights']['Insert'], id?: string): Flight {
+  const aircraftFromFallback = fallbackFlights.find((item) => item.aircraft_id === flight.aircraft_id)?.aircraft ?? null;
+  const routeFromFallback = fallbackFlights.find((item) => item.route_id === flight.route_id)?.routes ?? null;
+  const captainFromFallback = fallbackFlights.find((item) => item.captain_id === flight.captain_id)?.captain ?? null;
+
+  return {
+    id: id || `local-flight-${Date.now()}`,
+    flight_number: flight.flight_number || 'FLIGHT-NEW',
+    aircraft_id: flight.aircraft_id || null,
+    route_id: flight.route_id || null,
+    captain_id: flight.captain_id || null,
+    departure_time: flight.departure_time || new Date().toISOString(),
+    arrival_time: flight.arrival_time || new Date().toISOString(),
+    actual_departure: flight.actual_departure ?? null,
+    actual_arrival: flight.actual_arrival ?? null,
+    status: flight.status || 'scheduled',
+    gate: flight.gate ?? null,
+    terminal: flight.terminal ?? null,
+    passenger_count: flight.passenger_count ?? 0,
+    available_seats: flight.available_seats ?? null,
+    delay_minutes: flight.delay_minutes ?? 0,
+    delay_reason: flight.delay_reason ?? null,
+    cancellation_reason: flight.cancellation_reason ?? null,
+    fuel_used_liters: flight.fuel_used_liters ?? null,
+    notes: flight.notes ?? null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    aircraft: aircraftFromFallback,
+    routes: routeFromFallback,
+    captain: captainFromFallback,
+  } as Flight;
+}
+
 type Flight = Database['public']['Tables']['flights']['Row'] & {
   aircraft?: Database['public']['Tables']['aircraft']['Row'] | null;
   routes?: Database['public']['Tables']['routes']['Row'] | null;
@@ -102,7 +167,7 @@ export function useFlights(filters?: {
     setLoading(true);
     try {
       if (!isSupabaseConfigured) {
-        setFlights(fallbackFlights);
+        setFlights(getLocalFlights());
         setLoading(false);
         return;
       }
@@ -139,11 +204,22 @@ export function useFlights(filters?: {
   useEffect(() => {
     fetchFlights();
 
-    if (!isSupabaseConfigured) {
-      return;
+    // Listen for explicit flight update events (local/demo flows)
+    const FLIGHTS_EVENT = 'skyair-flights-updated';
+    const onFlightsEvent = () => fetchFlights();
+    if (typeof window !== 'undefined') {
+      window.addEventListener(FLIGHTS_EVENT, onFlightsEvent);
     }
 
-    // Subscribe to real-time flight updates
+    if (!isSupabaseConfigured) {
+      return () => {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener(FLIGHTS_EVENT, onFlightsEvent);
+        }
+      };
+    }
+
+    // Subscribe to real-time flight updates (Supabase)
     const channelName = `flights-changes-${Math.random().toString(36).slice(2)}`;
     const channel = supabase
       .channel(channelName)
@@ -155,25 +231,70 @@ export function useFlights(filters?: {
     return () => {
       channel.unsubscribe?.();
       supabase.removeChannel(channel);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(FLIGHTS_EVENT, onFlightsEvent);
+      }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters?.status, filters?.search]);
 
   const createFlight = async (flight: Database['public']['Tables']['flights']['Insert']) => {
-    const { error } = await (supabase.from('flights') as any).insert(flight);
+    if (!isSupabaseConfigured) {
+      const nextFlight = buildLocalFlight(flight);
+      const nextFlights = [nextFlight, ...getStoredLocalFlights()];
+      saveStoredLocalFlights(nextFlights);
+      setFlights(getLocalFlights());
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('skyair-flights-updated'));
+      }
+      return nextFlight;
+    }
+
+    const { data, error } = await (supabase.from('flights') as any).insert(flight).select().single();
     if (error) throw error;
     await fetchFlights();
-    return null;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('skyair-flights-updated'));
+    }
+    return data as Flight;
   };
 
   const updateFlight = async (id: string, updates: Database['public']['Tables']['flights']['Update']) => {
+    if (!isSupabaseConfigured) {
+      const storedFlights = getStoredLocalFlights();
+      const existing = storedFlights.find((flight) => flight.id === id);
+      const nextFlight = existing
+        ? ({ ...existing, ...updates, id, updated_at: new Date().toISOString() } as Flight)
+        : buildLocalFlight(updates as Database['public']['Tables']['flights']['Insert'], id);
+      const nextFlights = [nextFlight, ...storedFlights.filter((flight) => flight.id !== id)];
+      saveStoredLocalFlights(nextFlights);
+      setFlights(getLocalFlights());
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('skyair-flights-updated'));
+      }
+      return nextFlight;
+    }
+
     const { data, error } = await (supabase.from('flights') as any).update(updates).eq('id', id).select().single();
     if (error) throw error;
     await fetchFlights();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('skyair-flights-updated'));
+    }
     return data;
   };
 
   const deleteFlight = async (id: string) => {
+    if (!isSupabaseConfigured) {
+      const nextFlights = getStoredLocalFlights().filter((flight) => flight.id !== id);
+      saveStoredLocalFlights(nextFlights);
+      setFlights(getLocalFlights());
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('skyair-flights-updated'));
+      }
+      return;
+    }
+
     const { error } = await (supabase.from('flights') as any).delete().eq('id', id);
     if (error) throw error;
     await fetchFlights();

@@ -59,16 +59,31 @@ export default function SettingsPage() {
     if (!user) return;
     setIsUpdatingProfile(true);
     try {
-      const { error } = await (supabase.from('profiles') as any)
-        .update({
-          full_name: values.full_name,
+      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        const { updateLocalDemoAccount } = await import('@/lib/auth');
+        const updated = updateLocalDemoAccount(user.id, {
+          fullName: values.full_name,
           phone: values.phone || null,
-          avatar_url: values.avatar_url || null,
-        })
-        .eq('id', user.id);
+          avatarUrl: values.avatar_url || null,
+        });
 
-      if (error) throw error;
-      toast.success('Profile updated successfully');
+        if (!updated) {
+          throw new Error('Failed to update local profile');
+        }
+
+        toast.success('Profile updated successfully');
+      } else {
+        const { error } = await (supabase.from('profiles') as any)
+          .update({
+            full_name: values.full_name,
+            phone: values.phone || null,
+            avatar_url: values.avatar_url || null,
+          })
+          .eq('id', user.id);
+
+        if (error) throw error;
+        toast.success('Profile updated successfully');
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to update profile');
     } finally {
@@ -79,9 +94,23 @@ export default function SettingsPage() {
   const onPasswordSubmit = async (values: z.infer<typeof passwordSchema>) => {
     setIsUpdatingPassword(true);
     try {
-      await updatePassword(values.newPassword);
-      toast.success('Password updated successfully');
-      passwordForm.reset();
+      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        const { updateLocalDemoPassword } = await import('@/lib/auth');
+        const userId = user?.id;
+        if (!userId) {
+          throw new Error('No authenticated user session available');
+        }
+        const updated = updateLocalDemoPassword(userId, values.newPassword);
+        if (!updated) {
+          throw new Error('Failed to update local password');
+        }
+        toast.success('Password updated successfully');
+        passwordForm.reset();
+      } else {
+        await updatePassword(values.newPassword);
+        toast.success('Password updated successfully');
+        passwordForm.reset();
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to update password');
     } finally {
@@ -93,13 +122,20 @@ export default function SettingsPage() {
     if (!user) return;
     setDarkMode(enabled);
     try {
-      const { error } = await (supabase.from('profiles') as any)
-        .update({ dark_mode: enabled })
-        .eq('id', user.id);
-      if (error) throw error;
-      toast.success(`Dark mode ${enabled ? 'enabled' : 'disabled'}`);
+      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        const { updateLocalDemoAccount } = await import('@/lib/auth');
+        const updated = updateLocalDemoAccount(user.id, { darkMode: enabled });
+        if (!updated) throw new Error('Failed to update dark mode preference');
+        toast.success(`Dark mode ${enabled ? 'enabled' : 'disabled'}`);
+      } else {
+        const { error } = await (supabase.from('profiles') as any)
+          .update({ dark_mode: enabled })
+          .eq('id', user.id);
+        if (error) throw error;
+        toast.success(`Dark mode ${enabled ? 'enabled' : 'disabled'}`);
+      }
     } catch (error) {
-      toast.error('Failed to update dark mode preference');
+      toast.error(error instanceof Error ? error.message : 'Failed to update dark mode preference');
     }
   };
 

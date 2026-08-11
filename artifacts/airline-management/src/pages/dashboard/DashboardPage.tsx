@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plane, Clock, AlertCircle, XCircle, Users, Wrench, TrendingUp, TrendingDown } from 'lucide-react';
 import { useDashboardStats, useDelayTrends } from '@/hooks/useAnalytics';
 import { useFlights } from '@/hooks/useFlights';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import { StatCardSkeleton, TableSkeleton } from '@/components/shared/LoadingSkeleton';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { format } from 'date-fns';
@@ -122,6 +123,35 @@ export default function DashboardPage() {
     const today = new Date().toISOString().split('T')[0];
     return flights.filter((f) => f.departure_time?.startsWith(today)).slice(0, 8);
   }, [flights]);
+
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onNewFlight = (event: Event) => {
+      const custom = event as CustomEvent<any>;
+      const id = custom?.detail?.id ?? null;
+      const flightNumber = custom?.detail?.flight_number ?? null;
+      if (flightNumber) {
+        toast.success(`New flight scheduled: ${flightNumber}`);
+      } else {
+        toast.success('Flights updated');
+      }
+      if (id) {
+        setHighlightId(id);
+        setTimeout(() => setHighlightId(null), 6000);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('skyair-new-flight', onNewFlight as EventListener);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('skyair-new-flight', onNewFlight as EventListener);
+      }
+    };
+  }, []);
 
   const recentNotifications = useMemo(() => notifications.slice(0, 5), [notifications]);
 
@@ -244,7 +274,10 @@ export default function DashboardPage() {
                 </thead>
                 <tbody>
                   {todayFlights.map((flight) => (
-                    <tr key={flight.id} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
+                    <tr
+                      key={flight.id}
+                      className={`border-b border-border/50 hover:bg-muted/50 transition-colors ${highlightId === flight.id ? 'ring-2 ring-primary/40 bg-primary/10' : ''}`}
+                    >
                       <td className="py-3 px-2 font-mono font-semibold text-foreground">{flight.flight_number}</td>
                       <td className="py-3 px-2 text-muted-foreground">
                         {flight.routes ? `${flight.routes.origin_code} → ${flight.routes.destination_code}` : 'N/A'}

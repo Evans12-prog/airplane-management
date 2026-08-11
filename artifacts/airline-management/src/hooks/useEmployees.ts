@@ -223,10 +223,10 @@ export function useEmployees(
       return nextEmployee;
     }
 
-    const { error } = await (supabase.from('employees') as any).insert(employee);
+    const { data, error } = await (supabase.from('employees') as any).insert(employee).select().single();
     if (error) throw error;
     await fetchEmployees();
-    return null;
+    return data as Employee;
   };
 
   const updateEmployee = async (id: string, updates: Database['public']['Tables']['employees']['Update']) => {

@@ -121,6 +121,11 @@ export interface LocalDemoAccount {
   department: string;
   departmentSlug: string;
   roleName: RoleName;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  darkMode?: boolean;
+  language?: string;
+  notificationSettings?: unknown;
 }
 
 const LOCAL_STORAGE_KEYS = {
@@ -404,6 +409,34 @@ function getAllDemoAccounts() {
 
   if (!storedUsers.length) {
     saveStoredLocalUsers(DEFAULT_DEMO_ACCOUNTS);
+    // Seed simple local employee records for demo accounts so workspace pages show them
+    try {
+      const existingEmployees = getStoredLocalEmployees();
+      if (!existingEmployees.length) {
+        const demoEmployees = DEFAULT_DEMO_ACCOUNTS.map((acc) => ({
+          id: acc.id,
+          employee_number: `EMP-${acc.id.slice(-6)}`,
+          profile_id: acc.id,
+          full_name: acc.fullName,
+          email: acc.email,
+          phone: acc.phone || null,
+          department_id: acc.departmentSlug || null,
+          role_id: acc.roleName || null,
+          job_title: acc.roleName || 'Employee',
+          employment_type: 'full_time',
+          status: 'active',
+          hire_date: new Date().toISOString().split('T')[0],
+          certifications: [],
+          notes: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }));
+        saveStoredLocalEmployees(demoEmployees as any);
+      }
+    } catch {
+      // ignore seeding errors
+    }
+
     return [...DEFAULT_DEMO_ACCOUNTS];
   }
 
@@ -501,6 +534,40 @@ function saveLocalSession(account: LocalDemoAccount) {
   notifyAuthStateChanged();
 }
 
+export function updateLocalDemoAccount(accountId: string, patch: Partial<LocalDemoAccount>) {
+  const existingUsers = getStoredLocalUsers();
+  const storedSession = getStoredLocalSession();
+
+  let matched = false;
+  const nextUsers = existingUsers.map((account) => {
+    if (account.id === accountId) {
+      matched = true;
+      return { ...account, ...patch };
+    }
+    return account;
+  });
+
+  if (!matched && storedSession?.account?.id === accountId) {
+    nextUsers.push({ ...storedSession.account, ...patch });
+    matched = true;
+  }
+
+  if (matched) {
+    saveStoredLocalUsers(nextUsers);
+    const updatedAccount = nextUsers.find((account) => account.id === accountId) as LocalDemoAccount;
+    if (storedSession?.account?.id === accountId) {
+      saveLocalSession(updatedAccount);
+    }
+    return updatedAccount;
+  }
+
+  return null;
+}
+
+export function updateLocalDemoPassword(accountId: string, newPassword: string) {
+  return updateLocalDemoAccount(accountId, { password: newPassword });
+}
+
 export function getStoredLocalSession() {
   if (typeof window === 'undefined') {
     return null;
@@ -528,12 +595,12 @@ export function getLocalDemoProfile(account: LocalDemoAccount) {
     id: account.id,
     email: account.email,
     full_name: account.fullName,
-    avatar_url: null,
-    phone: null,
+    avatar_url: account.avatarUrl || null,
+    phone: account.phone || null,
     role_id: account.roleName,
-    dark_mode: false,
-    language: 'en',
-    notification_settings: {},
+    dark_mode: account.darkMode ?? false,
+    language: account.language || 'en',
+    notification_settings: account.notificationSettings ?? {},
     roles: { id: account.roleName, name: account.roleName, permissions: {} },
     departments: { id: account.departmentSlug, name: account.department },
   };
@@ -747,19 +814,11 @@ export function isStaffProfile(profile?: ProfileLike | null) {
 }
 
 export function canAccessFlights(profile?: ProfileLike | null) {
-  return (
-    isAdminProfile(profile) ||
-    isAirlineManagerProfile(profile) ||
-    isOperationsManagerProfile(profile) ||
-    isCrewManagerProfile(profile) ||
-    isMaintenanceOfficerProfile(profile) ||
-    isSecurityOfficerProfile(profile) ||
-    isRoutePlannerProfile(profile)
-  );
+  return Boolean(profile);
 }
 
 export function canAccessEmployees(profile?: ProfileLike | null) {
-  return isAdminProfile(profile) || isAirlineManagerProfile(profile) || isHrManagerProfile(profile);
+  return Boolean(profile);
 }
 
 export function canAccessAnalytics(profile?: ProfileLike | null) {
@@ -774,12 +833,7 @@ export function canAccessAnalytics(profile?: ProfileLike | null) {
 }
 
 export function canAccessAircraft(profile?: ProfileLike | null) {
-  return (
-    isAdminProfile(profile) ||
-    isAirlineManagerProfile(profile) ||
-    isFleetManagerProfile(profile) ||
-    isMaintenanceOfficerProfile(profile)
-  );
+  return Boolean(profile);
 }
 
 export function canAccessRoutes(profile?: ProfileLike | null) {

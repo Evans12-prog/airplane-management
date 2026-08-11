@@ -10,13 +10,239 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useFlights } from '@/hooks/useFlights';
-import { supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 import { toast } from 'sonner';
 
 type Aircraft = Database['public']['Tables']['aircraft']['Row'];
 type Route = Database['public']['Tables']['routes']['Row'];
 type Employee = Database['public']['Tables']['employees']['Row'];
+
+type LocalFlight = {
+  id: string;
+  flight_number: string;
+  aircraft_id: string | null;
+  route_id: string | null;
+  captain_id: string | null;
+  departure_time: string;
+  arrival_time: string;
+  actual_departure: string | null;
+  actual_arrival: string | null;
+  status: Database['public']['Tables']['flights']['Row']['status'];
+  gate: string | null;
+  terminal: string | null;
+  passenger_count: number;
+  available_seats: number | null;
+  delay_minutes: number;
+  delay_reason: string | null;
+  cancellation_reason: string | null;
+  fuel_used_liters: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+const fallbackAircraft: Aircraft[] = [
+  {
+    id: 'ac-1',
+    registration: 'ZS-AIR',
+    model: 'A320',
+    manufacturer: 'Airbus',
+    capacity: 180,
+    cargo_capacity_kg: 18000,
+    fuel_capacity_liters: 24000,
+    status: 'active',
+    last_maintenance_date: new Date().toISOString(),
+    next_maintenance_date: new Date().toISOString(),
+    total_flight_hours: 15200,
+    year_manufactured: 2021,
+    notes: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'ac-2',
+    registration: 'ZS-ALP',
+    model: 'A321',
+    manufacturer: 'Airbus',
+    capacity: 220,
+    cargo_capacity_kg: 20000,
+    fuel_capacity_liters: 28000,
+    status: 'active',
+    last_maintenance_date: new Date().toISOString(),
+    next_maintenance_date: new Date().toISOString(),
+    total_flight_hours: 18400,
+    year_manufactured: 2022,
+    notes: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'ac-3',
+    registration: 'ZS-BEE',
+    model: 'B737',
+    manufacturer: 'Boeing',
+    capacity: 180,
+    cargo_capacity_kg: 16000,
+    fuel_capacity_liters: 26000,
+    status: 'active',
+    last_maintenance_date: new Date().toISOString(),
+    next_maintenance_date: new Date().toISOString(),
+    total_flight_hours: 12000,
+    year_manufactured: 2020,
+    notes: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
+const fallbackRoutes: Route[] = [
+  {
+    id: 'route-1',
+    origin_code: 'JHB',
+    origin_city: 'Johannesburg',
+    destination_code: 'CPT',
+    destination_city: 'Cape Town',
+    distance_km: 1390,
+    estimated_duration_minutes: 120,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'route-2',
+    origin_code: 'CPT',
+    origin_city: 'Cape Town',
+    destination_code: 'DUR',
+    destination_city: 'Durban',
+    distance_km: 1600,
+    estimated_duration_minutes: 135,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'route-3',
+    origin_code: 'DUR',
+    origin_city: 'Durban',
+    destination_code: 'JHB',
+    destination_city: 'Johannesburg',
+    distance_km: 570,
+    estimated_duration_minutes: 70,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
+const fallbackCaptains: Employee[] = [
+  {
+    id: 'emp-1',
+    employee_number: 'EMP-001',
+    profile_id: null,
+    full_name: 'Mina Khumalo',
+    email: 'mina@skyair.example',
+    phone: null,
+    department_id: null,
+    role_id: null,
+    job_title: 'Captain',
+    employment_type: 'full_time',
+    status: 'active',
+    hire_date: new Date().toISOString().split('T')[0],
+    salary: null,
+    address: null,
+    emergency_contact: null,
+    certifications: [],
+    notes: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'emp-2',
+    employee_number: 'EMP-002',
+    profile_id: null,
+    full_name: 'Aisha Peters',
+    email: 'aisha@skyair.example',
+    phone: null,
+    department_id: null,
+    role_id: null,
+    job_title: 'Captain',
+    employment_type: 'full_time',
+    status: 'active',
+    hire_date: new Date().toISOString().split('T')[0],
+    salary: null,
+    address: null,
+    emergency_contact: null,
+    certifications: [],
+    notes: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'emp-3',
+    employee_number: 'EMP-003',
+    profile_id: null,
+    full_name: 'Lerato Moyo',
+    email: 'lerato@skyair.example',
+    phone: null,
+    department_id: null,
+    role_id: null,
+    job_title: 'Captain',
+    employment_type: 'full_time',
+    status: 'active',
+    hire_date: new Date().toISOString().split('T')[0],
+    salary: null,
+    address: null,
+    emergency_contact: null,
+    certifications: [],
+    notes: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
+const LOCAL_FLIGHTS_STORAGE_KEY = 'skyair-local-flights';
+
+function getStoredLocalFlights(): LocalFlight[] {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const value = window.localStorage.getItem(LOCAL_FLIGHTS_STORAGE_KEY);
+    return value ? (JSON.parse(value) as LocalFlight[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function buildLocalFlight(flight: Database['public']['Tables']['flights']['Insert'], id?: string): LocalFlight {
+  return {
+    id: id || `local-flight-${Date.now()}`,
+    flight_number: flight.flight_number || 'FLIGHT-NEW',
+    aircraft_id: flight.aircraft_id || null,
+    route_id: flight.route_id || null,
+    captain_id: flight.captain_id || null,
+    departure_time: flight.departure_time || new Date().toISOString(),
+    arrival_time: flight.arrival_time || new Date().toISOString(),
+    actual_departure: flight.actual_departure ?? null,
+    actual_arrival: flight.actual_arrival ?? null,
+    status: flight.status || 'scheduled',
+    gate: flight.gate ?? null,
+    terminal: flight.terminal ?? null,
+    passenger_count: flight.passenger_count ?? 0,
+    available_seats: flight.available_seats ?? null,
+    delay_minutes: flight.delay_minutes ?? 0,
+    delay_reason: flight.delay_reason ?? null,
+    cancellation_reason: flight.cancellation_reason ?? null,
+    fuel_used_liters: flight.fuel_used_liters ?? null,
+    notes: flight.notes ?? null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function findLocalFlightById(id: string) {
+  return getStoredLocalFlights().find((flight) => flight.id === id) ?? null;
+}
 
 const flightSchema = z.object({
   flight_number: z.string().min(3, 'Flight number is required').max(10),
@@ -70,6 +296,34 @@ export default function NewFlightPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        if (!isSupabaseConfigured) {
+          setAircraft(fallbackAircraft);
+          setRoutes(fallbackRoutes);
+          setCaptains(fallbackCaptains);
+
+          if (isEditing && flightId) {
+            const localFlight = findLocalFlightById(flightId);
+            if (localFlight) {
+              form.reset({
+                flight_number: localFlight.flight_number,
+                aircraft_id: localFlight.aircraft_id || '',
+                route_id: localFlight.route_id || '',
+                captain_id: localFlight.captain_id || undefined,
+                departure_time: localFlight.departure_time?.slice(0, 16) || '',
+                arrival_time: localFlight.arrival_time?.slice(0, 16) || '',
+                gate: localFlight.gate || '',
+                terminal: localFlight.terminal || '',
+                passenger_count: localFlight.passenger_count ?? 0,
+                status: localFlight.status,
+                notes: localFlight.notes || '',
+              });
+            }
+          }
+
+          setLoading(false);
+          return;
+        }
+
         const [aircraftRes, routesRes, captainsRes] = await Promise.all([
           (supabase.from('aircraft') as any).select('*').eq('status', 'active'),
           (supabase.from('routes') as any).select('*').eq('is_active', true),
@@ -125,6 +379,32 @@ export default function NewFlightPage() {
   const createOrGetAircraft = async (name?: string) => {
     if (!name?.trim()) return null;
     const registration = name.trim();
+
+    if (!isSupabaseConfigured) {
+      const existing = fallbackAircraft.find((item) => item.registration.toLowerCase() === registration.toLowerCase());
+      if (existing) return existing.id;
+
+      const newAircraft: Aircraft = {
+        id: `local-aircraft-${Date.now()}`,
+        registration,
+        model: registration,
+        manufacturer: 'Custom',
+        capacity: 0,
+        cargo_capacity_kg: 0,
+        fuel_capacity_liters: 0,
+        status: 'active',
+        last_maintenance_date: new Date().toISOString(),
+        next_maintenance_date: new Date().toISOString(),
+        total_flight_hours: 0,
+        year_manufactured: new Date().getFullYear(),
+        notes: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setAircraft((prev) => [...prev, newAircraft]);
+      return newAircraft.id;
+    }
+
     const { data: existing } = await (supabase.from('aircraft') as any)
       .select('id')
       .eq('registration', registration)
@@ -137,6 +417,7 @@ export default function NewFlightPage() {
         model: registration,
         manufacturer: 'Custom',
         capacity: 0,
+        fuel_capacity_kg: 0,
         fuel_capacity_liters: 0,
         status: 'active',
         total_flight_hours: 0,
@@ -154,6 +435,30 @@ export default function NewFlightPage() {
     const [originCode, destinationCode] = routeLabel.split(/\s*→\s*|\s*-\s*|\s*to\s*/i);
     const origin = originCode?.trim() || routeLabel;
     const destination = destinationCode?.trim() || routeLabel;
+
+    if (!isSupabaseConfigured) {
+      const existing = fallbackRoutes.find(
+        (item) =>
+          item.origin_code.toLowerCase() === origin.toLowerCase() &&
+          item.destination_code.toLowerCase() === destination.toLowerCase(),
+      );
+      if (existing) return existing.id;
+
+      const newRoute: Route = {
+        id: `local-route-${Date.now()}`,
+        origin_code: origin,
+        origin_city: origin,
+        destination_code: destination,
+        destination_city: destination,
+        distance_km: 0,
+        estimated_duration_minutes: 0,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setRoutes((prev) => [...prev, newRoute]);
+      return newRoute.id;
+    }
 
     const { data: existing } = await (supabase.from('routes') as any)
       .select('id')
@@ -182,6 +487,40 @@ export default function NewFlightPage() {
     if (!name?.trim()) return null;
     const fullName = name.trim();
     const email = `${fullName.replace(/\s+/g, '.').toLowerCase()}@skyair.local`;
+
+    if (!isSupabaseConfigured) {
+      const existing = fallbackCaptains.find(
+        (item) =>
+          item.full_name.toLowerCase() === fullName.toLowerCase() ||
+          item.email.toLowerCase() === email.toLowerCase(),
+      );
+      if (existing) return existing.id;
+
+      const newCaptain: Employee = {
+        id: `local-employee-${Date.now()}`,
+        employee_number: `EMP-${Date.now().toString().slice(-6)}`,
+        profile_id: null,
+        full_name: fullName,
+        email,
+        phone: null,
+        department_id: null,
+        role_id: null,
+        job_title: 'Captain',
+        employment_type: 'full_time',
+        status: 'active',
+        hire_date: new Date().toISOString().split('T')[0],
+        salary: null,
+        address: null,
+        emergency_contact: null,
+        certifications: [],
+        notes: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setCaptains((prev) => [...prev, newCaptain]);
+      return newCaptain.id;
+    }
+
     const { data: existing } = await (supabase.from('employees') as any)
       .select('id')
       .ilike('full_name', fullName)
@@ -191,6 +530,9 @@ export default function NewFlightPage() {
     if (existing?.id) return existing.id;
 
     const employeeNumber = `EMP-${Date.now().toString().slice(-6)}`;
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    const currentUserId = userData?.user?.id ?? null;
+
     const { data, error } = await (supabase.from('employees') as any)
       .insert({
         employee_number: employeeNumber,
@@ -204,9 +546,11 @@ export default function NewFlightPage() {
         status: 'active',
         hire_date: new Date().toISOString().split('T')[0],
         certifications: [],
+        profile_id: currentUserId,
       })
       .select('id')
       .single();
+    if (userError) throw userError;
     if (error) throw error;
     return data?.id ?? null;
   };
@@ -259,12 +603,20 @@ export default function NewFlightPage() {
       if (isEditing && flightId) {
         await updateFlight(flightId, payload);
         toast.success('Flight updated successfully');
+        setLocation('/flights');
       } else {
-        await createFlight(payload);
+        const created = await createFlight(payload);
         toast.success('Flight created successfully');
+        if (typeof window !== 'undefined') {
+          try {
+            const detail = { id: (created as any)?.id ?? null, flight_number: (created as any)?.flight_number ?? values.flight_number };
+            window.dispatchEvent(new CustomEvent('skyair-new-flight', { detail }));
+          } catch {
+            // ignore event dispatch errors
+          }
+        }
+        setLocation('/dashboard');
       }
-
-      setLocation('/flights');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save flight');
     } finally {
@@ -288,7 +640,9 @@ export default function NewFlightPage() {
       </Button>
 
       <div className="bg-card border border-card-border rounded-xl p-8">
-        <h2 className="text-2xl font-bold mb-6 text-foreground">Schedule New Flight</h2>
+        <h2 className="text-2xl font-bold mb-6 text-foreground">
+          {isEditing ? 'Edit Flight' : 'Schedule New Flight'}
+        </h2>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -558,8 +912,10 @@ export default function NewFlightPage() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
+                    {isEditing ? 'Saving...' : 'Creating...'}
                   </>
+                ) : isEditing ? (
+                  'Save Changes'
                 ) : (
                   'Create Flight'
                 )}

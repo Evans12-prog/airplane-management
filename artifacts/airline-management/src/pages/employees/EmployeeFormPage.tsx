@@ -77,13 +77,13 @@ export default function EmployeeFormPage() {
   const [match, params] = useRoute('/employees/edit/:id');
   const employeeId = params?.id;
   const isEditing = Boolean(match && employeeId);
-  const { profile } = useAuthContext();
+  const { profile, user, loading: authLoading } = useAuthContext();
 
   useEffect(() => {
-    if (!canAccessEmployees(profile)) {
+    if (!authLoading && !canAccessEmployees(profile)) {
       setLocation('/');
     }
-  }, [profile, setLocation]);
+  }, [profile, authLoading, setLocation]);
 
   const { createEmployee, updateEmployee } = useEmployees();
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -261,7 +261,7 @@ export default function EmployeeFormPage() {
       const departmentId = values.department_id || (await resolveDepartment(values.department_name));
       const roleId = values.role_id || (await resolveRole(values.role_name));
 
-      const payload: Database['public']['Tables']['employees']['Insert'] = {
+      const createPayload: Database['public']['Tables']['employees']['Insert'] = {
         employee_number: values.employee_number,
         full_name: values.full_name,
         email: values.email,
@@ -277,14 +277,32 @@ export default function EmployeeFormPage() {
         emergency_contact: values.emergency_contact ? values.emergency_contact : null,
         certifications: [],
         notes: values.notes || null,
-        profile_id: null,
+        profile_id: profile?.id ?? null,
       };
 
       if (isEditing && employeeId) {
-        await updateEmployee(employeeId, payload);
+        const updatePayload: Database['public']['Tables']['employees']['Update'] = {
+          employee_number: createPayload.employee_number,
+          full_name: createPayload.full_name,
+          email: createPayload.email,
+          phone: createPayload.phone,
+          department_id: createPayload.department_id,
+          role_id: createPayload.role_id,
+          job_title: createPayload.job_title,
+          employment_type: createPayload.employment_type,
+          status: createPayload.status,
+          hire_date: createPayload.hire_date,
+          salary: createPayload.salary,
+          address: createPayload.address,
+          emergency_contact: createPayload.emergency_contact,
+          certifications: createPayload.certifications,
+          notes: createPayload.notes,
+        };
+
+        await updateEmployee(employeeId, updatePayload);
         toast.success('Employee updated successfully');
       } else {
-        await createEmployee(payload);
+        await createEmployee(createPayload);
         toast.success('Employee added successfully');
       }
 

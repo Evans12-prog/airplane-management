@@ -23,15 +23,15 @@ export default function EmployeesPage() {
   const [suspendId, setSuspendId] = useState<string | null>(null);
   const [activateId, setActivateId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const { profile } = useAuthContext();
+  const { profile, loading: authLoading } = useAuthContext();
 
   useEffect(() => {
-    if (!canAccessEmployees(profile)) {
+    if (!authLoading && !canAccessEmployees(profile)) {
       setLocation('/');
     }
-  }, [profile, setLocation]);
+  }, [profile, authLoading, setLocation]);
 
-  const { employees, loading, deleteEmployee, suspendEmployee, activateEmployee } = useEmployees(
+  const { employees, loading: employeesLoading, deleteEmployee, suspendEmployee, activateEmployee } = useEmployees(
     {
       status: statusFilter,
       search: searchQuery,
@@ -157,7 +157,7 @@ export default function EmployeesPage() {
       </div>
 
       {/* Table */}
-      {loading ? (
+      {employeesLoading ? (
         <TableSkeleton rows={10} />
       ) : filteredEmployees.length === 0 ? (
         <EmptyState
