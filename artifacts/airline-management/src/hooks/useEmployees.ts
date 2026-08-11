@@ -212,6 +212,18 @@ export function useEmployees(
 
   useEffect(() => {
     fetchEmployees();
+
+    const EMP_EVENT = 'skyair-employees-updated';
+    const onEmployeesEvent = () => fetchEmployees();
+    if (typeof window !== 'undefined') {
+      window.addEventListener(EMP_EVENT, onEmployeesEvent);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(EMP_EVENT, onEmployeesEvent);
+      }
+    };
   }, [fetchEmployees]);
 
   const createEmployee = async (employee: Database['public']['Tables']['employees']['Insert']) => {
@@ -222,11 +234,24 @@ export function useEmployees(
       setEmployees(getLocalEmployees());
       return nextEmployee;
     }
-
-    const { data, error } = await (supabase.from('employees') as any).insert(employee).select().single();
-    if (error) throw error;
-    await fetchEmployees();
-    return data as Employee;
+    try {
+      const { data, error } = await (supabase.from('employees') as any).insert(employee).select().single();
+      if (error) throw error;
+      await fetchEmployees();
+      return data as Employee;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Remote createEmployee failed, falling back to local storage:', err);
+      const nextEmployee = buildLocalEmployee(employee as any);
+      const nextEmployees = [nextEmployee, ...getStoredLocalEmployees()];
+      saveStoredLocalEmployees(nextEmployees);
+      setEmployees(getLocalEmployees());
+      // notify other parts of the app
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('skyair-employees-updated'));
+      }
+      return nextEmployee;
+    }
   };
 
   const updateEmployee = async (id: string, updates: Database['public']['Tables']['employees']['Update']) => {
@@ -242,10 +267,27 @@ export function useEmployees(
       return nextEmployee;
     }
 
-    const { data, error } = await (supabase.from('employees') as any).update(updates).eq('id', id).select().single();
-    if (error) throw error;
-    await fetchEmployees();
-    return data;
+    try {
+      const { data, error } = await (supabase.from('employees') as any).update(updates).eq('id', id).select().single();
+      if (error) throw error;
+      await fetchEmployees();
+      return data;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Remote updateEmployee failed, falling back to local storage:', err);
+      const storedEmployees = getStoredLocalEmployees();
+      const existing = storedEmployees.find((employee) => employee.id === id);
+      const nextEmployee = existing
+        ? ({ ...existing, ...updates, id, updated_at: new Date().toISOString() } as Employee)
+        : buildLocalEmployee(updates as Database['public']['Tables']['employees']['Insert'] & Partial<Employee>, id);
+      const nextEmployees = [nextEmployee, ...storedEmployees.filter((employee) => employee.id !== id)];
+      saveStoredLocalEmployees(nextEmployees);
+      setEmployees(getLocalEmployees());
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('skyair-employees-updated'));
+      }
+      return nextEmployee;
+    }
   };
 
   const deleteEmployee = async (id: string) => {
@@ -255,10 +297,20 @@ export function useEmployees(
       setEmployees(getLocalEmployees());
       return;
     }
-
-    const { error } = await (supabase.from('employees') as any).delete().eq('id', id);
-    if (error) throw error;
-    await fetchEmployees();
+    try {
+      const { error } = await (supabase.from('employees') as any).delete().eq('id', id);
+      if (error) throw error;
+      await fetchEmployees();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Remote deleteEmployee failed, falling back to local storage:', err);
+      const nextEmployees = getStoredLocalEmployees().filter((employee) => employee.id !== id);
+      saveStoredLocalEmployees(nextEmployees);
+      setEmployees(getLocalEmployees());
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('skyair-employees-updated'));
+      }
+    }
   };
 
   const suspendEmployee = async (id: string) => updateEmployee(id, { status: 'suspended' });

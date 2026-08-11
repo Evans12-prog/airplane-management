@@ -405,28 +405,55 @@ export default function NewFlightPage() {
       return newAircraft.id;
     }
 
-    const { data: existing } = await (supabase.from('aircraft') as any)
-      .select('id')
-      .eq('registration', registration)
-      .single();
-    if (existing?.id) return existing.id;
+    try {
+      const { data: existing } = await (supabase.from('aircraft') as any)
+        .select('id')
+        .eq('registration', registration)
+        .single();
+      if (existing?.id) return existing.id;
 
-    const { data, error } = await (supabase.from('aircraft') as any)
-      .insert({
+      const { data, error } = await (supabase.from('aircraft') as any)
+        .insert({
+          registration,
+          model: registration,
+          manufacturer: 'Custom',
+          capacity: 0,
+          fuel_capacity_kg: 0,
+          fuel_capacity_liters: 0,
+          status: 'active',
+          total_flight_hours: 0,
+          year_manufactured: new Date().getFullYear(),
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+      return data?.id ?? null;
+    } catch (err) {
+      // fallback to local aircraft on remote error
+      // eslint-disable-next-line no-console
+      console.error('createOrGetAircraft remote call failed, falling back to local:', err);
+      const existingLocal = fallbackAircraft.find((item) => item.registration.toLowerCase() === registration.toLowerCase());
+      if (existingLocal) return existingLocal.id;
+      const newAircraft: Aircraft = {
+        id: `local-aircraft-${Date.now()}`,
         registration,
         model: registration,
         manufacturer: 'Custom',
         capacity: 0,
-        fuel_capacity_kg: 0,
+        cargo_capacity_kg: 0,
         fuel_capacity_liters: 0,
         status: 'active',
+        last_maintenance_date: new Date().toISOString(),
+        next_maintenance_date: new Date().toISOString(),
         total_flight_hours: 0,
         year_manufactured: new Date().getFullYear(),
-      })
-      .select('id')
-      .single();
-    if (error) throw error;
-    return data?.id ?? null;
+        notes: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setAircraft((prev) => [...prev, newAircraft]);
+      return newAircraft.id;
+    }
   };
 
   const createOrGetRoute = async (name?: string) => {
@@ -460,15 +487,40 @@ export default function NewFlightPage() {
       return newRoute.id;
     }
 
-    const { data: existing } = await (supabase.from('routes') as any)
-      .select('id')
-      .eq('origin_code', origin)
-      .eq('destination_code', destination)
-      .single();
-    if (existing?.id) return existing.id;
+    try {
+      const { data: existing } = await (supabase.from('routes') as any)
+        .select('id')
+        .eq('origin_code', origin)
+        .eq('destination_code', destination)
+        .single();
+      if (existing?.id) return existing.id;
 
-    const { data, error } = await (supabase.from('routes') as any)
-      .insert({
+      const { data, error } = await (supabase.from('routes') as any)
+        .insert({
+          origin_code: origin,
+          origin_city: origin,
+          destination_code: destination,
+          destination_city: destination,
+          distance_km: 0,
+          estimated_duration_minutes: 0,
+          is_active: true,
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+      return data?.id ?? null;
+    } catch (err) {
+      // fallback to local route on remote error
+      // eslint-disable-next-line no-console
+      console.error('createOrGetRoute remote call failed, falling back to local:', err);
+      const existingLocal = fallbackRoutes.find(
+        (item) =>
+          item.origin_code.toLowerCase() === origin.toLowerCase() &&
+          item.destination_code.toLowerCase() === destination.toLowerCase(),
+      );
+      if (existingLocal) return existingLocal.id;
+      const newRoute: Route = {
+        id: `local-route-${Date.now()}`,
         origin_code: origin,
         origin_city: origin,
         destination_code: destination,
@@ -476,11 +528,12 @@ export default function NewFlightPage() {
         distance_km: 0,
         estimated_duration_minutes: 0,
         is_active: true,
-      })
-      .select('id')
-      .single();
-    if (error) throw error;
-    return data?.id ?? null;
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setRoutes((prev) => [...prev, newRoute]);
+      return newRoute.id;
+    }
   };
 
   const createOrGetCaptain = async (name?: string) => {
@@ -521,21 +574,53 @@ export default function NewFlightPage() {
       return newCaptain.id;
     }
 
-    const { data: existing } = await (supabase.from('employees') as any)
-      .select('id')
-      .ilike('full_name', fullName)
-      .or(`email.eq.${email}`)
-      .limit(1)
-      .single();
-    if (existing?.id) return existing.id;
+    try {
+      const { data: existing } = await (supabase.from('employees') as any)
+        .select('id')
+        .ilike('full_name', fullName)
+        .or(`email.eq.${email}`)
+        .limit(1)
+        .single();
+      if (existing?.id) return existing.id;
 
-    const employeeNumber = `EMP-${Date.now().toString().slice(-6)}`;
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    const currentUserId = userData?.user?.id ?? null;
+      const employeeNumber = `EMP-${Date.now().toString().slice(-6)}`;
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const currentUserId = userData?.user?.id ?? null;
 
-    const { data, error } = await (supabase.from('employees') as any)
-      .insert({
-        employee_number: employeeNumber,
+      const { data, error } = await (supabase.from('employees') as any)
+        .insert({
+          employee_number: employeeNumber,
+          full_name: fullName,
+          email,
+          phone: null,
+          department_id: null,
+          role_id: null,
+          job_title: 'Captain',
+          employment_type: 'full_time',
+          status: 'active',
+          hire_date: new Date().toISOString().split('T')[0],
+          certifications: [],
+          profile_id: currentUserId,
+        })
+        .select('id')
+        .single();
+      if (userError) throw userError;
+      if (error) throw error;
+      return data?.id ?? null;
+    } catch (err) {
+      // fallback to local employee on remote error
+      // eslint-disable-next-line no-console
+      console.error('createOrGetCaptain remote call failed, falling back to local:', err);
+      const existingLocal = fallbackCaptains.find(
+        (item) =>
+          item.full_name.toLowerCase() === fullName.toLowerCase() ||
+          item.email.toLowerCase() === email.toLowerCase(),
+      );
+      if (existingLocal) return existingLocal.id;
+      const newCaptain: Employee = {
+        id: `local-employee-${Date.now()}`,
+        employee_number: `EMP-${Date.now().toString().slice(-6)}`,
+        profile_id: null,
         full_name: fullName,
         email,
         phone: null,
@@ -545,14 +630,17 @@ export default function NewFlightPage() {
         employment_type: 'full_time',
         status: 'active',
         hire_date: new Date().toISOString().split('T')[0],
+        salary: null,
+        address: null,
+        emergency_contact: null,
         certifications: [],
-        profile_id: currentUserId,
-      })
-      .select('id')
-      .single();
-    if (userError) throw userError;
-    if (error) throw error;
-    return data?.id ?? null;
+        notes: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setCaptains((prev) => [...prev, newCaptain]);
+      return newCaptain.id;
+    }
   };
 
   const onSubmit = async (values: z.infer<typeof flightSchema>) => {
@@ -618,7 +706,11 @@ export default function NewFlightPage() {
         setLocation('/dashboard');
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save flight');
+      // Show more detailed error information to help diagnose Supabase or network issues
+      const msg = error instanceof Error ? error.message : typeof error === 'string' ? error : JSON.stringify(error, Object.getOwnPropertyNames(error || {}));
+      // eslint-disable-next-line no-console
+      console.error('Failed to save flight:', error);
+      toast.error(msg || 'Failed to save flight');
     } finally {
       setIsSubmitting(false);
     }

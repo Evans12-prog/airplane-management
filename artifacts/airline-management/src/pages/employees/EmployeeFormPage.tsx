@@ -205,57 +205,93 @@ export default function EmployeeFormPage() {
       const resolveDepartment = async (name?: string) => {
         if (!name?.trim()) return null;
         const normalized = name.trim();
-        const { data: existing, error: selectError } = await (supabase.from('departments') as any)
-          .select('id')
-          .ilike('name', normalized)
-          .limit(1)
-          .single();
+        try {
+          const { data: existing, error: selectError } = await (supabase.from('departments') as any)
+            .select('id')
+            .ilike('name', normalized)
+            .limit(1)
+            .single();
 
-        if (selectError && selectError.code !== 'PGRST116') {
-          throw selectError;
-        }
+          if (selectError && selectError.code !== 'PGRST116') {
+            throw selectError;
+          }
 
-        if (existing?.id) return existing.id;
+          if (existing?.id) return existing.id;
 
-        const { data: inserted, error: insertError } = await (supabase.from('departments') as any)
-          .insert({
+          const { data: inserted, error: insertError } = await (supabase.from('departments') as any)
+            .insert({
+              name: normalized,
+              description: null,
+              manager_id: null,
+            })
+            .select('id')
+            .single();
+
+          if (insertError) throw insertError;
+          return inserted?.id ?? null;
+        } catch (err) {
+          // fallback to local department creation when remote fails
+          // eslint-disable-next-line no-console
+          console.error('resolveDepartment remote failed, falling back to local:', err);
+          const existingLocal = fallbackDepartments.find((d) => d.name.toLowerCase() === normalized.toLowerCase());
+          if (existingLocal) return existingLocal.id;
+          const newDept: Department = {
+            id: `local-dept-${Date.now()}`,
             name: normalized,
             description: null,
             manager_id: null,
-          })
-          .select('id')
-          .single();
-
-        if (insertError) throw insertError;
-        return inserted?.id ?? null;
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          setDepartments((prev) => [...prev, newDept]);
+          return newDept.id;
+        }
       };
 
       const resolveRole = async (name?: string) => {
         if (!name?.trim()) return null;
         const normalized = name.trim();
-        const { data: existing, error: selectError } = await (supabase.from('roles') as any)
-          .select('id')
-          .ilike('name', normalized)
-          .limit(1)
-          .single();
+        try {
+          const { data: existing, error: selectError } = await (supabase.from('roles') as any)
+            .select('id')
+            .ilike('name', normalized)
+            .limit(1)
+            .single();
 
-        if (selectError && selectError.code !== 'PGRST116') {
-          throw selectError;
-        }
+          if (selectError && selectError.code !== 'PGRST116') {
+            throw selectError;
+          }
 
-        if (existing?.id) return existing.id;
+          if (existing?.id) return existing.id;
 
-        const { data: inserted, error: insertError } = await (supabase.from('roles') as any)
-          .insert({
+          const { data: inserted, error: insertError } = await (supabase.from('roles') as any)
+            .insert({
+              name: normalized,
+              description: null,
+              permissions: {},
+            })
+            .select('id')
+            .single();
+
+          if (insertError) throw insertError;
+          return inserted?.id ?? null;
+        } catch (err) {
+          // fallback to local role creation when remote fails
+          // eslint-disable-next-line no-console
+          console.error('resolveRole remote failed, falling back to local:', err);
+          const existingLocal = fallbackRoles.find((r) => r.name.toLowerCase() === normalized.toLowerCase());
+          if (existingLocal) return existingLocal.id;
+          const newRole: Role = {
+            id: `local-role-${Date.now()}`,
             name: normalized,
             description: null,
             permissions: {},
-          })
-          .select('id')
-          .single();
-
-        if (insertError) throw insertError;
-        return inserted?.id ?? null;
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          setRoles((prev) => [...prev, newRole]);
+          return newRole.id;
+        }
       };
 
       const departmentId = values.department_id || (await resolveDepartment(values.department_name));
@@ -308,7 +344,11 @@ export default function EmployeeFormPage() {
 
       setLocation('/employees');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save employee');
+      // Log and surface detailed error for debugging
+      const msg = error instanceof Error ? error.message : typeof error === 'string' ? error : JSON.stringify(error, Object.getOwnPropertyNames(error || {}));
+      // eslint-disable-next-line no-console
+      console.error('Failed to save employee:', error);
+      toast.error(msg || 'Failed to save employee');
     } finally {
       setIsSubmitting(false);
     }

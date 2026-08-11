@@ -249,14 +249,27 @@ export function useFlights(filters?: {
       }
       return nextFlight;
     }
-
-    const { data, error } = await (supabase.from('flights') as any).insert(flight).select().single();
-    if (error) throw error;
-    await fetchFlights();
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('skyair-flights-updated'));
+    try {
+      const { data, error } = await (supabase.from('flights') as any).insert(flight).select().single();
+      if (error) throw error;
+      await fetchFlights();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('skyair-flights-updated'));
+      }
+      return data as Flight;
+    } catch (err) {
+      // If remote insert fails (network, CORS, permissions), fallback to local storage so hosted demo still works
+      // eslint-disable-next-line no-console
+      console.error('Remote createFlight failed, falling back to local storage:', err);
+      const nextFlight = buildLocalFlight(flight as any);
+      const nextFlights = [nextFlight, ...getStoredLocalFlights()];
+      saveStoredLocalFlights(nextFlights);
+      setFlights(getLocalFlights());
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('skyair-flights-updated'));
+      }
+      return nextFlight;
     }
-    return data as Flight;
   };
 
   const updateFlight = async (id: string, updates: Database['public']['Tables']['flights']['Update']) => {
@@ -275,13 +288,31 @@ export function useFlights(filters?: {
       return nextFlight;
     }
 
-    const { data, error } = await (supabase.from('flights') as any).update(updates).eq('id', id).select().single();
-    if (error) throw error;
-    await fetchFlights();
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('skyair-flights-updated'));
+    try {
+      const { data, error } = await (supabase.from('flights') as any).update(updates).eq('id', id).select().single();
+      if (error) throw error;
+      await fetchFlights();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('skyair-flights-updated'));
+      }
+      return data;
+    } catch (err) {
+      // fallback to local update on error
+      // eslint-disable-next-line no-console
+      console.error('Remote updateFlight failed, falling back to local storage:', err);
+      const storedFlights = getStoredLocalFlights();
+      const existing = storedFlights.find((flight) => flight.id === id);
+      const nextFlight = existing
+        ? ({ ...existing, ...updates, id, updated_at: new Date().toISOString() } as Flight)
+        : buildLocalFlight(updates as Database['public']['Tables']['flights']['Insert'], id);
+      const nextFlights = [nextFlight, ...storedFlights.filter((flight) => flight.id !== id)];
+      saveStoredLocalFlights(nextFlights);
+      setFlights(getLocalFlights());
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('skyair-flights-updated'));
+      }
+      return nextFlight;
     }
-    return data;
   };
 
   const deleteFlight = async (id: string) => {
@@ -294,10 +325,21 @@ export function useFlights(filters?: {
       }
       return;
     }
-
-    const { error } = await (supabase.from('flights') as any).delete().eq('id', id);
-    if (error) throw error;
-    await fetchFlights();
+    try {
+      const { error } = await (supabase.from('flights') as any).delete().eq('id', id);
+      if (error) throw error;
+      await fetchFlights();
+    } catch (err) {
+      // fallback to local delete on error
+      // eslint-disable-next-line no-console
+      console.error('Remote deleteFlight failed, falling back to local storage:', err);
+      const nextFlights = getStoredLocalFlights().filter((flight) => flight.id !== id);
+      saveStoredLocalFlights(nextFlights);
+      setFlights(getLocalFlights());
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('skyair-flights-updated'));
+      }
+    }
   };
 
   return { flights, loading, error, refetch: fetchFlights, createFlight, updateFlight, deleteFlight };
