@@ -238,6 +238,12 @@ export function useEmployees(
       const { data, error } = await (supabase.from('employees') as any).insert(employee).select().single();
       if (error) throw error;
       await fetchEmployees();
+      try {
+        const { notifyDepartment } = await import('@/lib/departmentNotifications');
+        void notifyDepartment(employee.department_id ?? null, 'New employee added', `${(data as any)?.full_name} was added to your department`);
+      } catch {
+        // ignore
+      }
       return data as Employee;
     } catch (err) {
       // eslint-disable-next-line no-console

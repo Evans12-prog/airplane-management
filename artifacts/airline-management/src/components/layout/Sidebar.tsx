@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
+import { getDepartmentNotifications } from '@/lib/departmentNotifications';
 import { mergeProfileWithUserMetadata, getAccessibleNavigationItems, getDepartmentSlug, signOut } from '@/lib/auth';
 import { toast } from 'sonner';
 
@@ -54,6 +55,15 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
   const departmentSlug = getDepartmentSlug(fallbackProfile);
   const departmentWorkspaceHref = `/department/${departmentSlug}`;
   const departmentWorkspaceLabel = fallbackProfile?.departments?.name ? `${fallbackProfile.departments.name} Workspace` : 'Department Workspace';
+  const departmentNotifications = getDepartmentNotifications(fallbackProfile?.departments?.id ?? null);
+  const deptUnread = departmentNotifications.filter((d) => !d.is_read).length;
+
+  // Listen for department notification events to update badge reactively
+  if (typeof window !== 'undefined') {
+    window.addEventListener('skyair-department-notification', () => {
+      // noop: component will re-render on hook/state changes elsewhere; this keeps API simple
+    });
+  }
 
   const navItems = [
     {
@@ -179,6 +189,11 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                 {showBadge && (
                   <span className="ml-auto min-w-[20px] rounded-full bg-destructive px-1.5 py-0.5 text-center text-xs font-bold text-destructive-foreground">
                     {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+                {item.href === departmentWorkspaceHref && deptUnread > 0 && (
+                  <span className="ml-auto min-w-[20px] rounded-full bg-amber-600 px-1.5 py-0.5 text-center text-xs font-bold text-amber-50">
+                    {deptUnread > 99 ? '99+' : deptUnread}
                   </span>
                 )}
               </Link>

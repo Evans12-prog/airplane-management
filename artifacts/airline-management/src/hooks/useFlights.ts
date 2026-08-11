@@ -256,6 +256,15 @@ export function useFlights(filters?: {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('skyair-flights-updated'));
       }
+      // Notify department (route/ops) about new flight
+      try {
+        // attempt to notify department via local dispatcher (fallback)
+        // lazy import to avoid SSR issues
+        const { notifyDepartment } = await import('@/lib/departmentNotifications');
+        void notifyDepartment(null, 'New flight created', `Flight ${(data as any)?.flight_number} was created`);
+      } catch {
+        // ignore
+      }
       return data as Flight;
     } catch (err) {
       // If remote insert fails (network, CORS, permissions), fallback to local storage so hosted demo still works
